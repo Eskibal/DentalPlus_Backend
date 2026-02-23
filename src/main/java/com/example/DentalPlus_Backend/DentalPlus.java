@@ -4,10 +4,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class DentalPlusBackendApplication {
+public class DentalPlus 
+{
 
-	public static void main(String[] args) {
-		SpringApplication.run(DentalPlusBackendApplication.class, args);
+	public static void main(String[] args) 
+	{
+		SpringApplication.run(DentalPlus.class, args);
+		
+		//Main code...
+		
 	}
 
 }
