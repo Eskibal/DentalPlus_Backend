@@ -3,32 +3,13 @@ package com.example.DentalPlus_Backend.model;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-@JsonPropertyOrder({
-    "id",
-    "user",
-    "nationalId",
-    "phone",
-    "birthDate",
-    "gender",
-    "address",
-    "city",
-    "consultationReason",
-    "registrationDate",
-    "active"
-})
 @Entity
 @Table(name = "Patient")
 public class Patient {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @OneToOne
-    @MapsId
-    @JoinColumn(name = "id", nullable = false)
-    private User user;
 
     @Column(nullable = false, unique = true, length = 20)
     private String nationalId;
@@ -57,25 +38,13 @@ public class Patient {
     @Column(length = 255)
     private String consultationReason;
 
-    public Patient() {}
-
-    public Patient(User user, String nationalId) {
-        this.user = user;
-        this.nationalId = normalizeText(nationalId);
+    public Patient() {
         this.registrationDate = LocalDate.now();
         this.active = true;
     }
 
     public Long getId() {
         return id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
     }
 
     public String getNationalId() {
