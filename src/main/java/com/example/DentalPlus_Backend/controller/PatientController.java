@@ -1,13 +1,11 @@
 package com.example.DentalPlus_Backend.controller;
 
 import com.example.DentalPlus_Backend.model.Patient;
-import com.example.DentalPlus_Backend.model.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,46 +17,9 @@ public class PatientController {
     @PersistenceContext
     private EntityManager entityManager;
 
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-
     @PostMapping
     @Transactional
     public ResponseEntity<?> createPatient(@RequestBody Patient patient) {
-
-        if (patient.getUser() == null) {
-            return ResponseEntity.badRequest().body("User data required");
-        }
-
-        User newUser = patient.getUser();
-
-        if (!User.isTextValid(newUser.getName())) {
-            return ResponseEntity.badRequest().body("Invalid name");
-        }
-
-        if (!User.isTextValid(newUser.getSurname())) {
-            return ResponseEntity.badRequest().body("Invalid surname");
-        }
-
-        if (!User.isEmailValid(newUser.getEmail())) {
-            return ResponseEntity.badRequest().body("Invalid email");
-        }
-
-        if (!User.isPasswordValid(newUser.getPassword())) {
-            return ResponseEntity.badRequest().body("Invalid password");
-        }
-
-        String normalizedEmail = User.normalizeEmail(newUser.getEmail());
-
-        User existingUser = entityManager
-                .createQuery("FROM User u WHERE u.email = :email", User.class)
-                .setParameter("email", normalizedEmail)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-
-        if (existingUser != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already in use");
-        }
 
         String validationError = validatePatientData(patient);
         if (validationError != null) {
@@ -68,46 +29,6 @@ public class PatientController {
         if (findPatientByNationalId(patient.getNationalId()) != null) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("National ID already in use");
         }
-
-        newUser.setEmail(normalizedEmail);
-        newUser.setPassword(encoder.encode(newUser.getPassword()));
-
-        entityManager.persist(newUser);
-
-        Patient newPatient = new Patient(newUser, patient.getNationalId());
-        applyOptionalPatientFields(newPatient, patient);
-
-        entityManager.persist(newPatient);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(newPatient);
-    }
-
-    @PostMapping("/{userId}")
-    @Transactional
-    public ResponseEntity<?> createPatientFromUser(@PathVariable Long userId,
-                                                   @RequestBody Patient patientData) {
-
-        User existingUser = entityManager.find(User.class, userId);
-
-        if (existingUser == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-        }
-
-        if (entityManager.find(Patient.class, userId) != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Patient already exists");
-        }
-
-        String validationError = validatePatientData(patientData);
-        if (validationError != null) {
-            return ResponseEntity.badRequest().body(validationError);
-        }
-
-        if (findPatientByNationalId(patientData.getNationalId()) != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("National ID already in use");
-        }
-
-        Patient patient = new Patient(existingUser, patientData.getNationalId());
-        applyOptionalPatientFields(patient, patientData);
 
         entityManager.persist(patient);
 
@@ -150,8 +71,8 @@ public class PatientController {
             return ResponseEntity.badRequest().body(validationError);
         }
 
-        Patient patientWithSameNationalId = findPatientByNationalId(updatedPatient.getNationalId());
-        if (patientWithSameNationalId != null && !patientWithSameNationalId.getId().equals(id)) {
+        Patient existing = findPatientByNationalId(updatedPatient.getNationalId());
+        if (existing != null && !existing.getId().equals(id)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("National ID already in use");
         }
 
@@ -178,34 +99,13 @@ public class PatientController {
     }
 
     private String validatePatientData(Patient patient) {
-        if (!Patient.isNationalIdValid(patient.getNationalId())) {
-            return "Invalid nationalId";
-        }
-
-        if (!Patient.isOptionalTextValid(patient.getPhone(), 20)) {
-            return "Invalid phone";
-        }
-
-        if (!Patient.isBirthDateValid(patient.getBirthDate())) {
-            return "Invalid birth date";
-        }
-
-        if (!Patient.isOptionalTextValid(patient.getGender(), 20)) {
-            return "Invalid gender";
-        }
-
-        if (!Patient.isOptionalTextValid(patient.getAddress(), 150)) {
-            return "Invalid address";
-        }
-
-        if (!Patient.isOptionalTextValid(patient.getCity(), 100)) {
-            return "Invalid city";
-        }
-
-        if (!Patient.isOptionalTextValid(patient.getConsultationReason(), 255)) {
-            return "Invalid consultation reason";
-        }
-
+        if (!Patient.isNationalIdValid(patient.getNationalId())) return "Invalid nationalId";
+        if (!Patient.isOptionalTextValid(patient.getPhone(), 20)) return "Invalid phone";
+        if (!Patient.isBirthDateValid(patient.getBirthDate())) return "Invalid birth date";
+        if (!Patient.isOptionalTextValid(patient.getGender(), 20)) return "Invalid gender";
+        if (!Patient.isOptionalTextValid(patient.getAddress(), 150)) return "Invalid address";
+        if (!Patient.isOptionalTextValid(patient.getCity(), 100)) return "Invalid city";
+        if (!Patient.isOptionalTextValid(patient.getConsultationReason(), 255)) return "Invalid consultation reason";
         return null;
     }
 
