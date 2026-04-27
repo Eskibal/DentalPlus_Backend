@@ -1,5 +1,6 @@
 package com.example.DentalPlus_Backend.controller;
 
+import com.example.DentalPlus_Backend.model.Dentist;
 import com.example.DentalPlus_Backend.model.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -8,8 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/user")
@@ -20,9 +19,9 @@ public class UserController {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    @PostMapping
+    @PostMapping("/dentist")
     @Transactional
-    public ResponseEntity<?> createUser(@RequestBody User request) {
+    public ResponseEntity<?> createDentist(@RequestBody Dentist request) {
 
         if (!User.isUsernameValid(request.getUsername())) {
             return ResponseEntity.badRequest().body("Invalid username");
@@ -95,16 +94,8 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
 
-        return ResponseEntity.ok(buildSafeUser(user));
-    }
-
-    @PutMapping("/{id}")
-    @Transactional
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User request) {
-
-        User user = entityManager.find(User.class, id);
-        if (user == null) {
-            return ResponseEntity.notFound().build();
+        if (!Dentist.isTextValid(request.getSpeciality())) {
+            return ResponseEntity.badRequest().body("Invalid speciality");
         }
 
         if (!User.isUsernameValid(request.getUsername())) {
@@ -151,35 +142,37 @@ public class UserController {
             user.setActive(request.getActive());
         }
 
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            if (!User.isPasswordValid(request.getPassword())) {
-                return ResponseEntity.badRequest().body("Invalid password");
-            }
-            user.setPassword(encoder.encode(request.getPassword()));
+        User existingUser = entityManager
+                .createQuery("FROM User u WHERE u.username = :username", User.class)
+                .setParameter("username", username)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+
+        if (existingUser != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
         }
 
-        entityManager.merge(user);
+        User newUser = new User(username, encoder.encode(requestUser.getPassword()));
+        entityManager.persist(newUser);
 
-        return ResponseEntity.ok(buildSafeUser(user));
-    }
+        Dentist newDentist = new Dentist(
+                newUser,
+                request.getSpeciality(),
+                request.getVisitWeekday(),
+                request.getCity(),
+                request.getDirection()
+        );
 
-    @DeleteMapping("/{id}")
-    @Transactional
-    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
-        User user = entityManager.find(User.class, id);
+        entityManager.persist(newDentist);
 
-        if (user == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        entityManager.remove(user);
-        return ResponseEntity.ok("User deleted successfully");
+        return ResponseEntity.status(HttpStatus.CREATED).body(buildSafeDentistResponse(newDentist));
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User request) {
 
-        if (!User.isEmailValid(request.getEmail())
+        if (!User.isUsernameValid(request.getUsername())
                 || request.getPassword() == null
                 || request.getPassword().isBlank()) {
             return ResponseEntity.badRequest().body("Invalid credentials");
@@ -192,24 +185,17 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 
-        if (!user.getActive()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Inactive user");
-        }
-
         if (!encoder.matches(request.getPassword(), user.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 
-        return ResponseEntity.ok(buildSafeUser(user));
-    }
+        Dentist dentist = entityManager.find(Dentist.class, user.getId());
 
-    private User findByEmail(String email) {
-        return entityManager
-                .createQuery("FROM User u WHERE u.email = :email", User.class)
-                .setParameter("email", email)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
+        if (dentist == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Dentist profile not found");
+        }
+
+        return ResponseEntity.ok(buildSafeDentistResponse(dentist));
     }
 
     private User findByUsername(String username) {

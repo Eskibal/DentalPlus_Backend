@@ -1,9 +1,8 @@
 package com.example.DentalPlus_Backend.model;
 
-import jakarta.persistence.*;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.persistence.*;
 
 @JsonPropertyOrder({
     "id",
