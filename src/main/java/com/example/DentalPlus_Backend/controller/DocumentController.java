@@ -2,13 +2,16 @@ package com.example.DentalPlus_Backend.controller;
 
 import com.example.DentalPlus_Backend.model.Document;
 import com.example.DentalPlus_Backend.model.Patient;
+import com.example.DentalPlus_Backend.service.SupabaseStorageService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -18,34 +21,64 @@ public class DocumentController {
     @PersistenceContext
     private EntityManager entityManager;
 
-    @PostMapping
+    private final SupabaseStorageService supabaseStorageService;
+
+    public DocumentController(SupabaseStorageService supabaseStorageService) {
+        this.supabaseStorageService = supabaseStorageService;
+    }
+
+    @PostMapping("/upload/{patientId}")
     @Transactional
-    public ResponseEntity<?> createDocument(@RequestBody Document document) {
+    public ResponseEntity<?> uploadDocument(
+            @PathVariable Long patientId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("name") String name,
+            @RequestParam("documentType") String documentType,
+            @RequestParam(value = "notes", required = false) String notes
+    ) {
+        Patient patient = entityManager.find(Patient.class, patientId);
 
-        String validationError = validateDocumentData(document);
-        if (validationError != null) {
-            return ResponseEntity.badRequest().body(validationError);
-        }
-
-        if (document.getPatient() == null || document.getPatient().getId() == null) {
-            return ResponseEntity.badRequest().body("Patient id is required");
-        }
-
-        Patient existingPatient = entityManager.find(Patient.class, document.getPatient().getId());
-
-        if (existingPatient == null) {
+        if (patient == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient not found");
         }
 
-        Document newDocument = new Document();
-        newDocument.setType(document.getType());
-        newDocument.setFileUrl(document.getFileUrl());
-        newDocument.setCaptureDate(document.getCaptureDate());
-        newDocument.setPatient(existingPatient);
+        if (!Document.isNameValid(name)) {
+            return ResponseEntity.badRequest().body("Invalid name");
+        }
 
-        entityManager.persist(newDocument);
+        if (!Document.isDocumentTypeValid(documentType)) {
+            return ResponseEntity.badRequest().body("Invalid documentType");
+        }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(newDocument);
+        if (!Document.isNotesValid(notes)) {
+            return ResponseEntity.badRequest().body("Invalid notes");
+        }
+
+        if (!SupabaseStorageService.isPdfValid(file)) {
+            return ResponseEntity.badRequest().body("Invalid PDF file");
+        }
+
+        try {
+            String folder = "patients/" + patientId;
+            String storagePath = supabaseStorageService.uploadPdf(file, folder);
+
+            Document document = new Document(
+                    patient,
+                    name,
+                    storagePath,
+                    "application/pdf",
+                    documentType,
+                    true,
+                    notes
+            );
+
+            entityManager.persist(document);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(document);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error uploading PDF");
+        }
     }
 
     @GetMapping
@@ -86,34 +119,32 @@ public class DocumentController {
 
     @PutMapping("/{id}")
     @Transactional
-    public ResponseEntity<?> updateDocument(@PathVariable Long id,
-                                            @RequestBody Document updatedDocument) {
-
+    public ResponseEntity<?> updateDocument(
+            @PathVariable Long id,
+            @RequestBody Document updatedDocument
+    ) {
         Document document = entityManager.find(Document.class, id);
 
         if (document == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document not found");
         }
 
-        String validationError = validateDocumentData(updatedDocument);
-        if (validationError != null) {
-            return ResponseEntity.badRequest().body(validationError);
+        if (!Document.isNameValid(updatedDocument.getName())) {
+            return ResponseEntity.badRequest().body("Invalid name");
         }
 
-        if (updatedDocument.getPatient() == null || updatedDocument.getPatient().getId() == null) {
-            return ResponseEntity.badRequest().body("Patient id is required");
+        if (!Document.isDocumentTypeValid(updatedDocument.getDocumentType())) {
+            return ResponseEntity.badRequest().body("Invalid documentType");
         }
 
-        Patient existingPatient = entityManager.find(Patient.class, updatedDocument.getPatient().getId());
-
-        if (existingPatient == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient not found");
+        if (!Document.isNotesValid(updatedDocument.getNotes())) {
+            return ResponseEntity.badRequest().body("Invalid notes");
         }
 
-        document.setType(updatedDocument.getType());
-        document.setFileUrl(updatedDocument.getFileUrl());
-        document.setCaptureDate(updatedDocument.getCaptureDate());
-        document.setPatient(existingPatient);
+        document.setName(updatedDocument.getName());
+        document.setDocumentType(updatedDocument.getDocumentType());
+        document.setActive(updatedDocument.getActive());
+        document.setNotes(updatedDocument.getNotes());
 
         entityManager.merge(document);
 
@@ -129,24 +160,15 @@ public class DocumentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document not found");
         }
 
+        try {
+            supabaseStorageService.deletePdf(document.getStoragePath());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error deleting PDF from storage");
+        }
+
         entityManager.remove(document);
 
         return ResponseEntity.ok("Document deleted successfully");
-    }
-
-    private String validateDocumentData(Document document) {
-        if (!Document.isTypeValid(document.getType())) {
-            return "Invalid type";
-        }
-
-        if (!Document.isFileUrlValid(document.getFileUrl())) {
-            return "Invalid fileUrl";
-        }
-
-        if (!Document.isCaptureDateValid(document.getCaptureDate())) {
-            return "Invalid captureDate";
-        }
-
-        return null;
     }
 }

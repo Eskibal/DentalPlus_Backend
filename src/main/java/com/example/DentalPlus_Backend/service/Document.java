@@ -1,5 +1,6 @@
-package com.example.DentalPlus_Backend.model;
+package com.example.DentalPlus_Backend.service;
 
+import com.example.DentalPlus_Backend.model.Patient;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.*;
 

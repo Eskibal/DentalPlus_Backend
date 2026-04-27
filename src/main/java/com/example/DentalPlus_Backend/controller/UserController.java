@@ -23,37 +23,124 @@ public class UserController {
     @Transactional
     public ResponseEntity<?> createDentist(@RequestBody Dentist request) {
 
-        if (request.getUser() == null) {
-            return ResponseEntity.badRequest().body("User data required");
-        }
-
-        User requestUser = request.getUser();
-
-        if (!User.isUsernameValid(requestUser.getUsername())) {
+        if (!User.isUsernameValid(request.getUsername())) {
             return ResponseEntity.badRequest().body("Invalid username");
         }
 
-        if (!User.isPasswordValid(requestUser.getPassword())) {
+        if (!User.isEmailValid(request.getEmail())) {
+            return ResponseEntity.badRequest().body("Invalid email");
+        }
+
+        if (!User.isPasswordValid(request.getPassword())) {
             return ResponseEntity.badRequest().body("Invalid password");
+        }
+
+        if (!User.isThemePreferenceValid(request.getThemePreference())) {
+            return ResponseEntity.badRequest().body("Invalid themePreference");
+        }
+
+        if (!User.isLanguagePreferenceValid(request.getLanguagePreference())) {
+            return ResponseEntity.badRequest().body("Invalid languagePreference");
+        }
+
+        if (!User.isNotesValid(request.getNotes())) {
+            return ResponseEntity.badRequest().body("Invalid notes");
+        }
+
+        String normalizedEmail = User.normalizeEmail(request.getEmail());
+
+        if (findByEmail(normalizedEmail) != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
+        }
+
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            User userWithSameUsername = findByUsername(request.getUsername().trim());
+            if (userWithSameUsername != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
+            }
+        }
+
+        User user = new User(
+                request.getUsername(),
+                normalizedEmail,
+                encoder.encode(request.getPassword()),
+                request.getThemePreference(),
+                request.getLanguagePreference(),
+                request.getActive(),
+                request.getNotes()
+        );
+
+        entityManager.persist(user);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(buildSafeUser(user));
+    }
+
+    @GetMapping
+    public List<User> getAll() {
+        List<User> users = entityManager
+                .createQuery("FROM User", User.class)
+                .getResultList();
+
+        return users.stream()
+                .map(this::buildSafeUser)
+                .toList();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getById(@PathVariable Long id) {
+        User user = entityManager.find(User.class, id);
+
+        if (user == null) {
+            return ResponseEntity.notFound().build();
         }
 
         if (!Dentist.isTextValid(request.getSpeciality())) {
             return ResponseEntity.badRequest().body("Invalid speciality");
         }
 
-        if (!Dentist.isWeekdayValid(request.getVisitWeekday())) {
-            return ResponseEntity.badRequest().body("Invalid visitWeekday");
+        if (!User.isUsernameValid(request.getUsername())) {
+            return ResponseEntity.badRequest().body("Invalid username");
         }
 
-        if (!Dentist.isTextValid(request.getCity())) {
-            return ResponseEntity.badRequest().body("Invalid city");
+        if (!User.isEmailValid(request.getEmail())) {
+            return ResponseEntity.badRequest().body("Invalid email");
         }
 
-        if (!Dentist.isTextValid(request.getDirection())) {
-            return ResponseEntity.badRequest().body("Invalid direction");
+        if (!User.isThemePreferenceValid(request.getThemePreference())) {
+            return ResponseEntity.badRequest().body("Invalid themePreference");
         }
 
-        String username = User.normalizeText(requestUser.getUsername());
+        if (!User.isLanguagePreferenceValid(request.getLanguagePreference())) {
+            return ResponseEntity.badRequest().body("Invalid languagePreference");
+        }
+
+        if (!User.isNotesValid(request.getNotes())) {
+            return ResponseEntity.badRequest().body("Invalid notes");
+        }
+
+        String normalizedEmail = User.normalizeEmail(request.getEmail());
+
+        User existingByEmail = findByEmail(normalizedEmail);
+        if (existingByEmail != null && !existingByEmail.getId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already in use");
+        }
+
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            User existingByUsername = findByUsername(request.getUsername().trim());
+            if (existingByUsername != null && !existingByUsername.getId().equals(id)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already in use");
+            }
+        }
+
+        user.setUsername(request.getUsername());
+        user.setEmail(normalizedEmail);
+        user.setThemePreference(request.getThemePreference());
+        user.setLanguagePreference(request.getLanguagePreference());
+        user.setNotes(request.getNotes());
+
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
 
         User existingUser = entityManager
                 .createQuery("FROM User u WHERE u.username = :username", User.class)
@@ -91,14 +178,8 @@ public class UserController {
             return ResponseEntity.badRequest().body("Invalid credentials");
         }
 
-        String username = User.normalizeText(request.getUsername());
-
-        User user = entityManager
-                .createQuery("FROM User u WHERE u.username = :username", User.class)
-                .setParameter("username", username)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
+        String normalizedEmail = User.normalizeEmail(request.getEmail());
+        User user = findByEmail(normalizedEmail);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
@@ -117,14 +198,23 @@ public class UserController {
         return ResponseEntity.ok(buildSafeDentistResponse(dentist));
     }
 
-    private Object buildSafeDentistResponse(Dentist dentist) {
-        return new Object() {
-            public final Long userId = dentist.getUserId();
-            public final String username = dentist.getUser().getUsername();
-            public final String speciality = dentist.getSpeciality();
-            public final String visitWeekday = dentist.getVisitWeekday();
-            public final String city = dentist.getCity();
-            public final String direction = dentist.getDirection();
-        };
+    private User findByUsername(String username) {
+        return entityManager
+                .createQuery("FROM User u WHERE u.username = :username", User.class)
+                .setParameter("username", username)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    private User buildSafeUser(User user) {
+        User safeUser = new User();
+        safeUser.setUsername(user.getUsername());
+        safeUser.setEmail(user.getEmail());
+        safeUser.setThemePreference(user.getThemePreference());
+        safeUser.setLanguagePreference(user.getLanguagePreference());
+        safeUser.setActive(user.getActive());
+        safeUser.setNotes(user.getNotes());
+        return safeUser;
     }
 }

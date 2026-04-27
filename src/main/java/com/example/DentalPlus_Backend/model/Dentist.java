@@ -1,47 +1,81 @@
 package com.example.DentalPlus_Backend.model;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.*;
 
+@JsonPropertyOrder({
+    "id",
+    "person",
+    "user",
+    "clinic",
+    "calendarAssignment",
+    "speciality",
+    "active",
+    "notes"
+})
 @Entity
-@Table(name = "Dentist")
+@Table(name = "dentist")
 public class Dentist {
 
-    private static final int MAX_TEXT_LENGTH = 150;
-    private static final int MAX_WEEKDAY_LENGTH = 20;
-
     @Id
-    private Long userId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(updatable = false)
+    private Long id;
 
-    @OneToOne
-    @MapsId
-    @JoinColumn(name = "user_id", nullable = false)
+    @OneToOne(optional = false)
+    @JoinColumn(name = "person_id", nullable = false, unique = true)
+    private Person person;
+
+    @OneToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(nullable = false, length = MAX_TEXT_LENGTH)
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "clinic_id", nullable = false)
+    private Clinic clinic;
+
+    @OneToOne
+    @JoinColumn(name = "calendar_assignment_id", unique = true)
+    private CalendarAssignment calendarAssignment;
+
+    @Column(length = 120)
     private String speciality;
 
-    @Column(nullable = false, length = MAX_WEEKDAY_LENGTH)
-    private String visitWeekday;
+    @Column(nullable = false)
+    private Boolean active;
 
-    @Column(nullable = false, length = MAX_TEXT_LENGTH)
-    private String city;
-
-    @Column(nullable = false, length = MAX_TEXT_LENGTH)
-    private String direction;
+    @Column(length = 500)
+    private String notes;
 
     public Dentist() {
     }
 
-    public Dentist(User user, String speciality, String visitWeekday, String city, String direction) {
+    public Dentist(
+            Person person,
+            User user,
+            Clinic clinic,
+            String speciality,
+            Boolean active,
+            String notes
+    ) {
+        this.person = person;
         this.user = user;
+        this.clinic = clinic;
         this.speciality = normalizeText(speciality);
-        this.visitWeekday = normalizeText(visitWeekday);
-        this.city = normalizeText(city);
-        this.direction = normalizeText(direction);
+        this.active = active != null ? active : true;
+        this.notes = normalizeText(notes);
     }
 
-    public Long getUserId() {
-        return userId;
+    public Long getId() {
+        return id;
+    }
+
+    public Person getPerson() {
+        return person;
+    }
+
+    public void setPerson(Person person) {
+        this.person = person;
     }
 
     public User getUser() {
@@ -52,6 +86,22 @@ public class Dentist {
         this.user = user;
     }
 
+    public Clinic getClinic() {
+        return clinic;
+    }
+
+    public void setClinic(Clinic clinic) {
+        this.clinic = clinic;
+    }
+
+    public CalendarAssignment getCalendarAssignment() {
+        return calendarAssignment;
+    }
+
+    public void setCalendarAssignment(CalendarAssignment calendarAssignment) {
+        this.calendarAssignment = calendarAssignment;
+    }
+
     public String getSpeciality() {
         return speciality;
     }
@@ -60,36 +110,28 @@ public class Dentist {
         this.speciality = normalizeText(speciality);
     }
 
-    public String getVisitWeekday() {
-        return visitWeekday;
+    public Boolean getActive() {
+        return active;
     }
 
-    public void setVisitWeekday(String visitWeekday) {
-        this.visitWeekday = normalizeText(visitWeekday);
+    public void setActive(Boolean active) {
+        this.active = active != null ? active : true;
     }
 
-    public String getCity() {
-        return city;
+    public String getNotes() {
+        return notes;
     }
 
-    public void setCity(String city) {
-        this.city = normalizeText(city);
+    public void setNotes(String notes) {
+        this.notes = normalizeText(notes);
     }
 
-    public String getDirection() {
-        return direction;
+    public static boolean isSpecialityValid(String speciality) {
+        return speciality == null || speciality.isBlank() || speciality.trim().length() <= 120;
     }
 
-    public void setDirection(String direction) {
-        this.direction = normalizeText(direction);
-    }
-
-    public static boolean isTextValid(String text) {
-        return text != null && !text.isBlank() && text.trim().length() <= MAX_TEXT_LENGTH;
-    }
-
-    public static boolean isWeekdayValid(String text) {
-        return text != null && !text.isBlank() && text.trim().length() <= MAX_WEEKDAY_LENGTH;
+    public static boolean isNotesValid(String notes) {
+        return notes == null || notes.isBlank() || notes.trim().length() <= 500;
     }
 
     public static String normalizeText(String text) {

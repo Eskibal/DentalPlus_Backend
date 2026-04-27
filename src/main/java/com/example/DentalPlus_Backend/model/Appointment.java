@@ -6,10 +6,14 @@ import java.time.LocalDateTime;
 
 @JsonPropertyOrder({
     "id",
+    "box",
+    "dentist",
     "patient",
-    "scheduledAt",
-    "reason",
-    "notes"
+    "startDateTime",
+    "endDateTime",
+    "status",
+    "notes",
+    "active"
 })
 @Entity
 @Table(name = "appointment")
@@ -21,28 +25,73 @@ public class Appointment {
     private Long id;
 
     @ManyToOne(optional = false)
+    @JoinColumn(name = "box_id", nullable = false)
+    private Box box;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "dentist_id", nullable = false)
+    private Dentist dentist;
+
+    @ManyToOne(optional = false)
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
     @Column(nullable = false)
-    private LocalDateTime scheduledAt;
+    private LocalDateTime startDateTime;
 
-    @Column(nullable = false, length = 255)
-    private String reason;
+    @Column(nullable = false)
+    private LocalDateTime endDateTime;
+
+    @Column(nullable = false, length = 20)
+    private String status;
 
     @Column(length = 500)
     private String notes;
 
-    public Appointment() {}
+    @Column(nullable = false)
+    private Boolean active;
 
-    public Appointment(Patient patient, LocalDateTime scheduledAt, String reason) {
+    public Appointment() {
+    }
+
+    public Appointment(
+            Box box,
+            Dentist dentist,
+            Patient patient,
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime,
+            String status,
+            String notes,
+            Boolean active
+    ) {
+        this.box = box;
+        this.dentist = dentist;
         this.patient = patient;
-        this.scheduledAt = scheduledAt;
-        this.reason = normalizeText(reason);
+        this.startDateTime = startDateTime;
+        this.endDateTime = endDateTime;
+        this.status = normalizeStatus(status);
+        this.notes = normalizeText(notes);
+        this.active = active != null ? active : true;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public Box getBox() {
+        return box;
+    }
+
+    public void setBox(Box box) {
+        this.box = box;
+    }
+
+    public Dentist getDentist() {
+        return dentist;
+    }
+
+    public void setDentist(Dentist dentist) {
+        this.dentist = dentist;
     }
 
     public Patient getPatient() {
@@ -53,20 +102,28 @@ public class Appointment {
         this.patient = patient;
     }
 
-    public LocalDateTime getScheduledAt() {
-        return scheduledAt;
+    public LocalDateTime getStartDateTime() {
+        return startDateTime;
     }
 
-    public void setScheduledAt(LocalDateTime scheduledAt) {
-        this.scheduledAt = scheduledAt;
+    public void setStartDateTime(LocalDateTime startDateTime) {
+        this.startDateTime = startDateTime;
     }
 
-    public String getReason() {
-        return reason;
+    public LocalDateTime getEndDateTime() {
+        return endDateTime;
     }
 
-    public void setReason(String reason) {
-        this.reason = normalizeText(reason);
+    public void setEndDateTime(LocalDateTime endDateTime) {
+        this.endDateTime = endDateTime;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = normalizeStatus(status);
     }
 
     public String getNotes() {
@@ -77,20 +134,48 @@ public class Appointment {
         this.notes = normalizeText(notes);
     }
 
-    public static boolean isScheduledAtValid(LocalDateTime scheduledAt) {
-        return scheduledAt != null;
+    public Boolean getActive() {
+        return active;
     }
 
-    public static boolean isReasonValid(String reason) {
-        return reason != null
-                && !reason.isBlank()
-                && reason.trim().length() <= 255;
+    public void setActive(Boolean active) {
+        this.active = active != null ? active : true;
+    }
+
+    public static boolean isStartDateTimeValid(LocalDateTime startDateTime) {
+        return startDateTime != null;
+    }
+
+    public static boolean isEndDateTimeValid(LocalDateTime endDateTime) {
+        return endDateTime != null;
+    }
+
+    public static boolean isDateRangeValid(LocalDateTime startDateTime, LocalDateTime endDateTime) {
+        return startDateTime != null
+                && endDateTime != null
+                && endDateTime.isAfter(startDateTime);
+    }
+
+    public static boolean isStatusValid(String status) {
+        if (status == null || status.isBlank()) {
+            return false;
+        }
+
+        String normalized = status.trim().toUpperCase();
+
+        return normalized.equals("SCHEDULED")
+                || normalized.equals("COMPLETED")
+                || normalized.equals("CANCELLED");
     }
 
     public static boolean isNotesValid(String notes) {
         return notes == null
                 || notes.isBlank()
                 || notes.trim().length() <= 500;
+    }
+
+    public static String normalizeStatus(String status) {
+        return status == null ? null : status.trim().toUpperCase();
     }
 
     public static String normalizeText(String text) {
