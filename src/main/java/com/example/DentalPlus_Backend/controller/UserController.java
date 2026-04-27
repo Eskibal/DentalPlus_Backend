@@ -24,24 +24,51 @@ public class UserController {
     @Transactional
     public ResponseEntity<?> createUser(@RequestBody User request) {
 
-        if (!User.isTextValid(request.getName())
-                || !User.isTextValid(request.getSurname())
-                || !User.isEmailValid(request.getEmail())
-                || !User.isPasswordValid(request.getPassword())) {
-            return ResponseEntity.badRequest().body("Invalid data");
+        if (!User.isUsernameValid(request.getUsername())) {
+            return ResponseEntity.badRequest().body("Invalid username");
         }
 
-        String email = User.normalizeEmail(request.getEmail());
+        if (!User.isEmailValid(request.getEmail())) {
+            return ResponseEntity.badRequest().body("Invalid email");
+        }
 
-        if (findByEmail(email) != null) {
+        if (!User.isPasswordValid(request.getPassword())) {
+            return ResponseEntity.badRequest().body("Invalid password");
+        }
+
+        if (!User.isThemePreferenceValid(request.getThemePreference())) {
+            return ResponseEntity.badRequest().body("Invalid themePreference");
+        }
+
+        if (!User.isLanguagePreferenceValid(request.getLanguagePreference())) {
+            return ResponseEntity.badRequest().body("Invalid languagePreference");
+        }
+
+        if (!User.isNotesValid(request.getNotes())) {
+            return ResponseEntity.badRequest().body("Invalid notes");
+        }
+
+        String normalizedEmail = User.normalizeEmail(request.getEmail());
+
+        if (findByEmail(normalizedEmail) != null) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
         }
 
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            User userWithSameUsername = findByUsername(request.getUsername().trim());
+            if (userWithSameUsername != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
+            }
+        }
+
         User user = new User(
-                request.getName(),
-                request.getSurname(),
-                email,
-                encoder.encode(request.getPassword())
+                request.getUsername(),
+                normalizedEmail,
+                encoder.encode(request.getPassword()),
+                request.getThemePreference(),
+                request.getLanguagePreference(),
+                request.getActive(),
+                request.getNotes()
         );
 
         entityManager.persist(user);
@@ -80,22 +107,49 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
 
-        if (!User.isTextValid(request.getName())
-                || !User.isTextValid(request.getSurname())
-                || !User.isEmailValid(request.getEmail())) {
-            return ResponseEntity.badRequest().body("Invalid data");
+        if (!User.isUsernameValid(request.getUsername())) {
+            return ResponseEntity.badRequest().body("Invalid username");
         }
 
-        String email = User.normalizeEmail(request.getEmail());
+        if (!User.isEmailValid(request.getEmail())) {
+            return ResponseEntity.badRequest().body("Invalid email");
+        }
 
-        User existing = findByEmail(email);
-        if (existing != null && !existing.getId().equals(id)) {
+        if (!User.isThemePreferenceValid(request.getThemePreference())) {
+            return ResponseEntity.badRequest().body("Invalid themePreference");
+        }
+
+        if (!User.isLanguagePreferenceValid(request.getLanguagePreference())) {
+            return ResponseEntity.badRequest().body("Invalid languagePreference");
+        }
+
+        if (!User.isNotesValid(request.getNotes())) {
+            return ResponseEntity.badRequest().body("Invalid notes");
+        }
+
+        String normalizedEmail = User.normalizeEmail(request.getEmail());
+
+        User existingByEmail = findByEmail(normalizedEmail);
+        if (existingByEmail != null && !existingByEmail.getId().equals(id)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already in use");
         }
 
-        user.setName(request.getName());
-        user.setSurname(request.getSurname());
-        user.setEmail(email);
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            User existingByUsername = findByUsername(request.getUsername().trim());
+            if (existingByUsername != null && !existingByUsername.getId().equals(id)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already in use");
+            }
+        }
+
+        user.setUsername(request.getUsername());
+        user.setEmail(normalizedEmail);
+        user.setThemePreference(request.getThemePreference());
+        user.setLanguagePreference(request.getLanguagePreference());
+        user.setNotes(request.getNotes());
+
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             if (!User.isPasswordValid(request.getPassword())) {
@@ -131,8 +185,8 @@ public class UserController {
             return ResponseEntity.badRequest().body("Invalid credentials");
         }
 
-        String email = User.normalizeEmail(request.getEmail());
-        User user = findByEmail(email);
+        String normalizedEmail = User.normalizeEmail(request.getEmail());
+        User user = findByEmail(normalizedEmail);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
@@ -158,13 +212,23 @@ public class UserController {
                 .orElse(null);
     }
 
+    private User findByUsername(String username) {
+        return entityManager
+                .createQuery("FROM User u WHERE u.username = :username", User.class)
+                .setParameter("username", username)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+    }
+
     private User buildSafeUser(User user) {
         User safeUser = new User();
-        safeUser.setId(user.getId());
-        safeUser.setName(user.getName());
-        safeUser.setSurname(user.getSurname());
+        safeUser.setUsername(user.getUsername());
         safeUser.setEmail(user.getEmail());
+        safeUser.setThemePreference(user.getThemePreference());
+        safeUser.setLanguagePreference(user.getLanguagePreference());
         safeUser.setActive(user.getActive());
+        safeUser.setNotes(user.getNotes());
         return safeUser;
     }
 }

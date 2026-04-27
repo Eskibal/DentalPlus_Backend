@@ -1,37 +1,30 @@
 package com.example.DentalPlus_Backend.model;
 
-import jakarta.persistence.*;
-import java.time.LocalDate;
-
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.persistence.*;
 
 @JsonPropertyOrder({
     "id",
-    "person",
-    "user",
-    "registrationDate",
+    "clinic",
+    "name",
     "active",
     "notes"
 })
 @Entity
-@Table(name = "patient")
-public class Patient {
+@Table(name = "box")
+public class Box {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(updatable = false)
     private Long id;
 
-    @OneToOne(optional = false)
-    @JoinColumn(name = "person_id", nullable = false, unique = true)
-    private Person person;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "clinic_id", nullable = false)
+    private Clinic clinic;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", unique = true)
-    private User user;
-
-    @Column(nullable = false)
-    private LocalDate registrationDate;
+    @Column(nullable = false, length = 120)
+    private String name;
 
     @Column(nullable = false)
     private Boolean active;
@@ -39,13 +32,12 @@ public class Patient {
     @Column(length = 500)
     private String notes;
 
-    public Patient() {
+    public Box() {
     }
 
-    public Patient(Person person, User user, Boolean active, String notes) {
-        this.person = person;
-        this.user = user;
-        this.registrationDate = LocalDate.now();
+    public Box(Clinic clinic, String name, Boolean active, String notes) {
+        this.clinic = clinic;
+        this.name = normalizeText(name);
         this.active = active != null ? active : true;
         this.notes = normalizeText(notes);
     }
@@ -54,24 +46,20 @@ public class Patient {
         return id;
     }
 
-    public Person getPerson() {
-        return person;
+    public Clinic getClinic() {
+        return clinic;
     }
 
-    public void setPerson(Person person) {
-        this.person = person;
+    public void setClinic(Clinic clinic) {
+        this.clinic = clinic;
     }
 
-    public User getUser() {
-        return user;
+    public String getName() {
+        return name;
     }
 
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public LocalDate getRegistrationDate() {
-        return registrationDate;
+    public void setName(String name) {
+        this.name = normalizeText(name);
     }
 
     public Boolean getActive() {
@@ -90,10 +78,12 @@ public class Patient {
         this.notes = normalizeText(notes);
     }
 
+    public static boolean isNameValid(String name) {
+        return name != null && !name.isBlank() && name.trim().length() <= 120;
+    }
+
     public static boolean isNotesValid(String notes) {
-        return notes == null
-                || notes.isBlank()
-                || notes.trim().length() <= 500;
+        return notes == null || notes.isBlank() || notes.trim().length() <= 500;
     }
 
     public static String normalizeText(String text) {
