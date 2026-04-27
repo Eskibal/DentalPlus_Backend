@@ -1,6 +1,5 @@
 package com.example.DentalPlus_Backend.controller;
 
-import com.example.DentalPlus_Backend.model.Dentist;
 import com.example.DentalPlus_Backend.model.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -9,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/user")
@@ -19,9 +20,9 @@ public class UserController {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    @PostMapping("/dentist")
+    @PostMapping
     @Transactional
-    public ResponseEntity<?> createDentist(@RequestBody Dentist request) {
+    public ResponseEntity<?> createUser(@RequestBody User request) {
 
         if (!User.isUsernameValid(request.getUsername())) {
             return ResponseEntity.badRequest().body("Invalid username");
@@ -76,7 +77,7 @@ public class UserController {
     }
 
     @GetMapping
-    public List<User> getAll() {
+    public List<UserResponse> getAll() {
         List<User> users = entityManager
                 .createQuery("FROM User", User.class)
                 .getResultList();
@@ -91,11 +92,19 @@ public class UserController {
         User user = entityManager.find(User.class, id);
 
         if (user == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        if (!Dentist.isTextValid(request.getSpeciality())) {
-            return ResponseEntity.badRequest().body("Invalid speciality");
+        return ResponseEntity.ok(buildSafeUser(user));
+    }
+
+    @PutMapping("/{id}")
+    @Transactional
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User request) {
+
+        User user = entityManager.find(User.class, id);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
         if (!User.isUsernameValid(request.getUsername())) {
@@ -142,37 +151,35 @@ public class UserController {
             user.setActive(request.getActive());
         }
 
-        User existingUser = entityManager
-                .createQuery("FROM User u WHERE u.username = :username", User.class)
-                .setParameter("username", username)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-
-        if (existingUser != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            if (!User.isPasswordValid(request.getPassword())) {
+                return ResponseEntity.badRequest().body("Invalid password");
+            }
+            user.setPassword(encoder.encode(request.getPassword()));
         }
 
-        User newUser = new User(username, encoder.encode(requestUser.getPassword()));
-        entityManager.persist(newUser);
+        entityManager.merge(user);
 
-        Dentist newDentist = new Dentist(
-                newUser,
-                request.getSpeciality(),
-                request.getVisitWeekday(),
-                request.getCity(),
-                request.getDirection()
-        );
+        return ResponseEntity.ok(buildSafeUser(user));
+    }
 
-        entityManager.persist(newDentist);
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        User user = entityManager.find(User.class, id);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(buildSafeDentistResponse(newDentist));
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+
+        entityManager.remove(user);
+        return ResponseEntity.ok("User deleted successfully");
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User request) {
 
-        if (!User.isUsernameValid(request.getUsername())
+        if (!User.isEmailValid(request.getEmail())
                 || request.getPassword() == null
                 || request.getPassword().isBlank()) {
             return ResponseEntity.badRequest().body("Invalid credentials");
@@ -185,17 +192,24 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 
+        if (!user.getActive()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Inactive user");
+        }
+
         if (!encoder.matches(request.getPassword(), user.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
 
-        Dentist dentist = entityManager.find(Dentist.class, user.getId());
+        return ResponseEntity.ok(buildSafeUser(user));
+    }
 
-        if (dentist == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Dentist profile not found");
-        }
-
-        return ResponseEntity.ok(buildSafeDentistResponse(dentist));
+    private User findByEmail(String email) {
+        return entityManager
+                .createQuery("FROM User u WHERE u.email = :email", User.class)
+                .setParameter("email", email)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
     }
 
     private User findByUsername(String username) {
@@ -207,14 +221,55 @@ public class UserController {
                 .orElse(null);
     }
 
-    private User buildSafeUser(User user) {
-        User safeUser = new User();
-        safeUser.setUsername(user.getUsername());
-        safeUser.setEmail(user.getEmail());
-        safeUser.setThemePreference(user.getThemePreference());
-        safeUser.setLanguagePreference(user.getLanguagePreference());
-        safeUser.setActive(user.getActive());
-        safeUser.setNotes(user.getNotes());
-        return safeUser;
+    private UserResponse buildSafeUser(User user) {
+        return new UserResponse(user);
+    }
+
+    public static class UserResponse {
+        private Long id;
+        private String username;
+        private String email;
+        private String themePreference;
+        private String languagePreference;
+        private Boolean active;
+        private String notes;
+
+        public UserResponse(User user) {
+            this.id = user.getId();
+            this.username = user.getUsername();
+            this.email = user.getEmail();
+            this.themePreference = user.getThemePreference();
+            this.languagePreference = user.getLanguagePreference();
+            this.active = user.getActive();
+            this.notes = user.getNotes();
+        }
+
+        public Long getId() {
+            return id;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public String getThemePreference() {
+            return themePreference;
+        }
+
+        public String getLanguagePreference() {
+            return languagePreference;
+        }
+
+        public Boolean getActive() {
+            return active;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
     }
 }
