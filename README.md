@@ -350,6 +350,48 @@ spring.jpa.hibernate.ddl-auto=validate
 
 o usar migraciones controladas con Flyway/Liquibase.
 
+
+### Desincronización entre entidades Java y esquema MySQL
+
+Si el proyecto usa una base de datos externa que ya existía antes, puede aparecer una diferencia entre las entidades Java actuales y las columnas reales de MySQL. Un caso real detectado al ejecutar el seed fue:
+
+```text
+Field 'city' doesn't have a default value
+```
+
+El error ocurrió al insertar un `Dentist` porque la tabla `dentist` tenía una columna antigua `city` marcada como `NOT NULL`, pero la entidad `Dentist` actual no tiene ese campo. En el diseño actual, datos como ciudad, teléfono o email pertenecen a `Person`, no a `Dentist`.
+
+Para diagnosticarlo:
+
+```sql
+SHOW COLUMNS FROM dentist;
+```
+
+O de forma más detallada:
+
+```sql
+SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'dentist';
+```
+
+Si aparece una columna antigua que ya no existe en la entidad Java y además es obligatoria, el seed puede fallar aunque las tablas estén vacías. `TRUNCATE` borra datos, pero no corrige la estructura.
+
+Solución recomendada para el caso anterior:
+
+```sql
+ALTER TABLE dentist DROP COLUMN city;
+```
+
+Alternativa temporal, menos limpia:
+
+```sql
+ALTER TABLE dentist MODIFY city VARCHAR(100) NULL;
+```
+
+Después de corregir el esquema, vuelve a ejecutar el seed desde el principio, porque el proceso pudo haber dejado la base parcialmente truncada.
+
 ---
 
 ## Autenticación JWT
@@ -1508,6 +1550,40 @@ Solución:
 - Revisar `UserService` y services del dominio afectado.
 - Comprobar roles devueltos por `/user/me`.
 
+### Error del seed: `Field 'city' doesn't have a default value`
+
+Este error indica que la base de datos tiene una columna obligatoria que no existe en la entidad Java actual.
+
+Ejemplo real:
+
+```text
+Field 'city' doesn't have a default value
+insert into dentist (...)
+```
+
+Causa probable:
+
+- la tabla `dentist` conserva una columna antigua `city`;
+- esa columna está como `NOT NULL`;
+- la entidad `Dentist` actual no la envía al insertar;
+- `ddl-auto=update` no siempre elimina columnas obsoletas.
+
+Comprobación:
+
+```sql
+SHOW COLUMNS FROM dentist;
+```
+
+Solución recomendada si `city` es una columna antigua:
+
+```sql
+ALTER TABLE dentist DROP COLUMN city;
+```
+
+Luego vuelve a ejecutar el seed completo.
+
+> Antes de borrar columnas, confirma que estás trabajando en una base de desarrollo o demo y no en producción.
+
 ### Error de JSON mal construido
 
 Causas probables:
@@ -1934,4 +2010,3 @@ Estas partes no se pueden saber con total seguridad solo mirando el código:
 - Si Supabase debe usar bucket público o privado.
 - Comando oficial recomendado para ejecutar `ApplicationSeed` fuera del IDE.
 - Estado exacto del frontend y sus dependencias con estos DTOs.
-
