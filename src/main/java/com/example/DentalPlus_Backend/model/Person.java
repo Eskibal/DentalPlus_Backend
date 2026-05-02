@@ -5,220 +5,243 @@ import jakarta.persistence.*;
 
 import java.time.LocalDate;
 
-@JsonPropertyOrder({
-    "id",
-    "name",
-    "firstSurname",
-    "secondSurname",
-    "birthDate",
-    "gender",
-    "email",
-    "phonePrefix",
-    "phoneNumber",
-    "profileImage",
-    "active",
-    "notes"
-})
+@JsonPropertyOrder({ "id", "name", "firstSurname", "secondSurname", "birthDate", "gender", "email", "phonePrefix",
+		"phoneNumber", "address", "city", "profileImage", "active", "notes" })
 @Entity
 @Table(name = "person")
 public class Person {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(updatable = false)
-    private Long id;
+	private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+	private static final int MAX_EMAIL_LENGTH = 120;
 
-    @Column(nullable = false, length = 80)
-    private String name;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(updatable = false)
+	private Long id;
 
-    @Column(nullable = false, length = 80)
-    private String firstSurname;
+	@Column(nullable = false, length = 80)
+	private String name;
 
-    @Column(length = 80)
-    private String secondSurname;
+	@Column(nullable = false, length = 80)
+	private String firstSurname;
 
-    @Column
-    private LocalDate birthDate;
+	@Column(length = 80)
+	private String secondSurname;
 
-    @Column(length = 30)
-    private String gender;
+	@Column
+	private LocalDate birthDate;
 
-    @Column(length = 120)
-    private String email;
+	@Column(length = 30)
+	private String gender;
 
-    @Column(length = 10)
-    private String phonePrefix;
+	@Column(length = MAX_EMAIL_LENGTH)
+	private String email;
 
-    @Column(length = 20)
-    private String phoneNumber;
+	@Column(length = 10)
+	private String phonePrefix;
 
-    @Column(length = 255)
-    private String profileImage;
+	@Column(length = 20)
+	private String phoneNumber;
 
-    @Column(nullable = false)
-    private Boolean active;
+	@Column(length = 150)
+	private String address;
 
-    @Column(length = 500)
-    private String notes;
+	@Column(length = 100)
+	private String city;
 
-    public Person() {
-    }
+	@Column(length = 255)
+	private String profileImage;
 
-    public Person(
-            String name,
-            String firstSurname,
-            String secondSurname,
-            LocalDate birthDate,
-            String gender,
-            String email,
-            String phonePrefix,
-            String phoneNumber,
-            String profileImage,
-            Boolean active,
-            String notes
-    ) {
-        this.name = normalizeText(name);
-        this.firstSurname = normalizeText(firstSurname);
-        this.secondSurname = normalizeText(secondSurname);
-        this.birthDate = birthDate;
-        this.gender = normalizeText(gender);
-        this.email = normalizeText(email);
-        this.phonePrefix = normalizeText(phonePrefix);
-        this.phoneNumber = normalizeText(phoneNumber);
-        this.profileImage = normalizeText(profileImage);
-        this.active = active != null ? active : true;
-        this.notes = normalizeText(notes);
-    }
+	@Column(nullable = false)
+	private Boolean active;
 
-    public Long getId() {
-        return id;
-    }
+	@Column(length = 500)
+	private String notes;
 
-    public String getName() {
-        return name;
-    }
+	public Person() {
+	}
 
-    public void setName(String name) {
-        this.name = normalizeText(name);
-    }
+	public Person(String name, String firstSurname, String secondSurname, LocalDate birthDate, String gender,
+			String email, String phonePrefix, String phoneNumber, String address, String city, String profileImage,
+			Boolean active, String notes) {
+		this.name = normalizeText(name);
+		this.firstSurname = normalizeText(firstSurname);
+		this.secondSurname = normalizeText(secondSurname);
+		this.birthDate = birthDate;
+		this.gender = normalizeText(gender);
+		this.email = normalizeEmail(email);
+		this.phonePrefix = normalizeText(phonePrefix);
+		this.phoneNumber = normalizeText(phoneNumber);
+		this.address = normalizeText(address);
+		this.city = normalizeText(city);
+		this.profileImage = normalizeText(profileImage);
+		this.active = active != null ? active : true;
+		this.notes = normalizeText(notes);
+	}
 
-    public String getFirstSurname() {
-        return firstSurname;
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public void setFirstSurname(String firstSurname) {
-        this.firstSurname = normalizeText(firstSurname);
-    }
+	public String getName() {
+		return name;
+	}
 
-    public String getSecondSurname() {
-        return secondSurname;
-    }
+	public void setName(String name) {
+		this.name = normalizeText(name);
+	}
 
-    public void setSecondSurname(String secondSurname) {
-        this.secondSurname = normalizeText(secondSurname);
-    }
+	public String getFirstSurname() {
+		return firstSurname;
+	}
 
-    public LocalDate getBirthDate() {
-        return birthDate;
-    }
+	public void setFirstSurname(String firstSurname) {
+		this.firstSurname = normalizeText(firstSurname);
+	}
 
-    public void setBirthDate(LocalDate birthDate) {
-        this.birthDate = birthDate;
-    }
+	public String getSecondSurname() {
+		return secondSurname;
+	}
 
-    public String getGender() {
-        return gender;
-    }
+	public void setSecondSurname(String secondSurname) {
+		this.secondSurname = normalizeText(secondSurname);
+	}
 
-    public void setGender(String gender) {
-        this.gender = normalizeText(gender);
-    }
+	public LocalDate getBirthDate() {
+		return birthDate;
+	}
 
-    public String getEmail() {
-        return email;
-    }
+	public void setBirthDate(LocalDate birthDate) {
+		this.birthDate = birthDate;
+	}
 
-    public void setEmail(String email) {
-        this.email = normalizeText(email);
-    }
+	public String getGender() {
+		return gender;
+	}
 
-    public String getPhonePrefix() {
-        return phonePrefix;
-    }
+	public void setGender(String gender) {
+		this.gender = normalizeText(gender);
+	}
 
-    public void setPhonePrefix(String phonePrefix) {
-        this.phonePrefix = normalizeText(phonePrefix);
-    }
+	public String getEmail() {
+		return email;
+	}
 
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
+	public void setEmail(String email) {
+		this.email = normalizeEmail(email);
+	}
 
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = normalizeText(phoneNumber);
-    }
+	public String getPhonePrefix() {
+		return phonePrefix;
+	}
 
-    public String getProfileImage() {
-        return profileImage;
-    }
+	public void setPhonePrefix(String phonePrefix) {
+		this.phonePrefix = normalizeText(phonePrefix);
+	}
 
-    public void setProfileImage(String profileImage) {
-        this.profileImage = normalizeText(profileImage);
-    }
+	public String getPhoneNumber() {
+		return phoneNumber;
+	}
 
-    public Boolean getActive() {
-        return active;
-    }
+	public void setPhoneNumber(String phoneNumber) {
+		this.phoneNumber = normalizeText(phoneNumber);
+	}
 
-    public void setActive(Boolean active) {
-        this.active = active != null ? active : true;
-    }
+	public String getAddress() {
+		return address;
+	}
 
-    public String getNotes() {
-        return notes;
-    }
+	public void setAddress(String address) {
+		this.address = normalizeText(address);
+	}
 
-    public void setNotes(String notes) {
-        this.notes = normalizeText(notes);
-    }
+	public String getCity() {
+		return city;
+	}
 
-    public static boolean isNameValid(String name) {
-        return name != null && !name.isBlank() && name.trim().length() <= 80;
-    }
+	public void setCity(String city) {
+		this.city = normalizeText(city);
+	}
 
-    public static boolean isFirstSurnameValid(String firstSurname) {
-        return firstSurname != null && !firstSurname.isBlank() && firstSurname.trim().length() <= 80;
-    }
+	public String getProfileImage() {
+		return profileImage;
+	}
 
-    public static boolean isSecondSurnameValid(String secondSurname) {
-        return secondSurname == null || secondSurname.isBlank() || secondSurname.trim().length() <= 80;
-    }
+	public void setProfileImage(String profileImage) {
+		this.profileImage = normalizeText(profileImage);
+	}
 
-    public static boolean isGenderValid(String gender) {
-        return gender == null || gender.isBlank() || gender.trim().length() <= 30;
-    }
+	public Boolean getActive() {
+		return active;
+	}
 
-    public static boolean isEmailValid(String email) {
-        return email == null || email.isBlank() || email.trim().length() <= 120;
-    }
+	public void setActive(Boolean active) {
+		this.active = active != null ? active : true;
+	}
 
-    public static boolean isPhonePrefixValid(String phonePrefix) {
-        return phonePrefix == null || phonePrefix.isBlank() || phonePrefix.trim().length() <= 10;
-    }
+	public String getNotes() {
+		return notes;
+	}
 
-    public static boolean isPhoneNumberValid(String phoneNumber) {
-        return phoneNumber == null || phoneNumber.isBlank() || phoneNumber.trim().length() <= 20;
-    }
+	public void setNotes(String notes) {
+		this.notes = normalizeText(notes);
+	}
 
-    public static boolean isProfileImageValid(String profileImage) {
-        return profileImage == null || profileImage.isBlank() || profileImage.trim().length() <= 255;
-    }
+	public static boolean isNameValid(String name) {
+		return name != null && !name.isBlank() && name.trim().length() <= 80;
+	}
 
-    public static boolean isNotesValid(String notes) {
-        return notes == null || notes.isBlank() || notes.trim().length() <= 500;
-    }
+	public static boolean isFirstSurnameValid(String firstSurname) {
+		return firstSurname != null && !firstSurname.isBlank() && firstSurname.trim().length() <= 80;
+	}
 
-    public static String normalizeText(String text) {
-        return text == null ? null : text.trim();
-    }
+	public static boolean isSecondSurnameValid(String secondSurname) {
+		return secondSurname == null || secondSurname.isBlank() || secondSurname.trim().length() <= 80;
+	}
+
+	public static boolean isGenderValid(String gender) {
+		return gender == null || gender.isBlank() || gender.trim().length() <= 30;
+	}
+
+	public static boolean isEmailValid(String email) {
+		if (email == null || email.isBlank()) {
+			return true;
+		}
+
+		String normalized = email.trim().toLowerCase();
+
+		return normalized.length() <= MAX_EMAIL_LENGTH && normalized.matches(EMAIL_REGEX);
+	}
+
+	public static boolean isPhonePrefixValid(String phonePrefix) {
+		return phonePrefix == null || phonePrefix.isBlank() || phonePrefix.trim().length() <= 10;
+	}
+
+	public static boolean isPhoneNumberValid(String phoneNumber) {
+		return phoneNumber == null || phoneNumber.isBlank() || phoneNumber.trim().length() <= 20;
+	}
+
+	public static boolean isAddressValid(String address) {
+		return address == null || address.isBlank() || address.trim().length() <= 150;
+	}
+
+	public static boolean isCityValid(String city) {
+		return city == null || city.isBlank() || city.trim().length() <= 100;
+	}
+
+	public static boolean isProfileImageValid(String profileImage) {
+		return profileImage == null || profileImage.isBlank() || profileImage.trim().length() <= 255;
+	}
+
+	public static boolean isNotesValid(String notes) {
+		return notes == null || notes.isBlank() || notes.trim().length() <= 500;
+	}
+
+	public static String normalizeEmail(String email) {
+		return email == null ? null : email.trim().toLowerCase();
+	}
+
+	public static String normalizeText(String text) {
+		return text == null ? null : text.trim();
+	}
 }

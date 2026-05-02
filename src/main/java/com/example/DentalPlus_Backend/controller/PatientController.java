@@ -1,239 +1,100 @@
 package com.example.DentalPlus_Backend.controller;
 
-import com.example.DentalPlus_Backend.model.Patient;
-import com.example.DentalPlus_Backend.model.Person;
-import com.example.DentalPlus_Backend.model.User;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional;
+import com.example.DentalPlus_Backend.dto.PatientDto;
+import com.example.DentalPlus_Backend.service.JwtService;
+import com.example.DentalPlus_Backend.service.PatientService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/patient")
 public class PatientController {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+	private final PatientService patientService;
+	private final JwtService jwtService;
 
-    @PostMapping
-    @Transactional
-    public ResponseEntity<?> createPatient(@RequestBody PatientRequest request) {
+	public PatientController(PatientService patientService, JwtService jwtService) {
+		this.patientService = patientService;
+		this.jwtService = jwtService;
+	}
 
-        if (request == null || request.getPersonId() == null) {
-            return ResponseEntity.badRequest().body("personId is required");
-        }
+	@GetMapping
+	public ResponseEntity<?> getPatients(
+			@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+			@RequestParam(required = false) String search) {
+		Long callerUserId = getAuthenticatedUserId(authorizationHeader);
 
-        Person person = entityManager.find(Person.class, request.getPersonId());
+		if (callerUserId == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+		}
 
-        if (person == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Person not found");
-        }
+		try {
+			return ResponseEntity.ok(patientService.getVisiblePatients(callerUserId, search));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+		}
+	}
 
-        if (findPatientByPersonId(request.getPersonId()) != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("This person is already linked to a patient");
-        }
+	@GetMapping("/{id}")
+	public ResponseEntity<?> getPatientById(
+			@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+			@PathVariable Long id) {
+		Long callerUserId = getAuthenticatedUserId(authorizationHeader);
 
-        User user = null;
-        if (request.getUserId() != null) {
-            user = entityManager.find(User.class, request.getUserId());
+		if (callerUserId == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+		}
 
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-            }
+		try {
+			return ResponseEntity.ok(patientService.getPatientById(id, callerUserId));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+		}
+	}
 
-            Patient patientWithSameUser = findPatientByUserId(request.getUserId());
-            if (patientWithSameUser != null) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body("This user is already linked to a patient");
-            }
-        }
+	@PostMapping
+	public ResponseEntity<?> createPatient(
+			@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+			@RequestBody PatientDto request) {
+		Long callerUserId = getAuthenticatedUserId(authorizationHeader);
 
-        if (!Patient.isNotesValid(request.getNotes())) {
-            return ResponseEntity.badRequest().body("Invalid notes");
-        }
+		if (callerUserId == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+		}
 
-        Patient patient = new Patient(
-                person,
-                user,
-                request.getActive(),
-                request.getNotes()
-        );
+		try {
+			PatientDto response = patientService.createPatient(request, callerUserId);
+			return ResponseEntity.status(HttpStatus.CREATED).body(response);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
 
-        entityManager.persist(patient);
+	@PutMapping("/{id}")
+	public ResponseEntity<?> updatePatient(
+			@RequestHeader(value = "Authorization", required = false) String authorizationHeader, @PathVariable Long id,
+			@RequestBody PatientDto request) {
+		Long callerUserId = getAuthenticatedUserId(authorizationHeader);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(patient);
-    }
+		if (callerUserId == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+		}
 
-    @GetMapping
-    public ResponseEntity<List<Patient>> getAllPatients() {
-        List<Patient> patients = entityManager
-                .createQuery("FROM Patient", Patient.class)
-                .getResultList();
+		try {
+			return ResponseEntity.ok(patientService.updatePatient(id, request, callerUserId));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+	}
 
-        return ResponseEntity.ok(patients);
-    }
+	private Long getAuthenticatedUserId(String authorizationHeader) {
+		String token = jwtService.extractToken(authorizationHeader);
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getPatientById(@PathVariable Long id) {
-        Patient patient = entityManager.find(Patient.class, id);
+		if (token == null || !jwtService.validateToken(token)) {
+			return null;
+		}
 
-        if (patient == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient not found");
-        }
-
-        return ResponseEntity.ok(patient);
-    }
-
-    @PutMapping("/{id}")
-    @Transactional
-    public ResponseEntity<?> updatePatient(
-            @PathVariable Long id,
-            @RequestBody PatientRequest request
-    ) {
-        Patient patient = entityManager.find(Patient.class, id);
-
-        if (patient == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient not found");
-        }
-
-        if (request == null) {
-            return ResponseEntity.badRequest().body("Request body is required");
-        }
-
-        if (request.getPersonId() != null) {
-            Person person = entityManager.find(Person.class, request.getPersonId());
-
-            if (person == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Person not found");
-            }
-
-            Patient patientWithSamePerson = findPatientByPersonId(request.getPersonId());
-            if (patientWithSamePerson != null && !patientWithSamePerson.getId().equals(id)) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body("This person is already linked to another patient");
-            }
-
-            patient.setPerson(person);
-        }
-
-        if (request.isUserIdProvided()) {
-            if (request.getUserId() == null) {
-                patient.setUser(null);
-            } else {
-                User user = entityManager.find(User.class, request.getUserId());
-
-                if (user == null) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-                }
-
-                Patient patientWithSameUser = findPatientByUserId(request.getUserId());
-                if (patientWithSameUser != null && !patientWithSameUser.getId().equals(id)) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body("This user is already linked to another patient");
-                }
-
-                patient.setUser(user);
-            }
-        }
-
-        if (request.getActive() != null) {
-            patient.setActive(request.getActive());
-        }
-
-        if (request.isNotesProvided()) {
-            if (!Patient.isNotesValid(request.getNotes())) {
-                return ResponseEntity.badRequest().body("Invalid notes");
-            }
-            patient.setNotes(request.getNotes());
-        }
-
-        entityManager.merge(patient);
-
-        return ResponseEntity.ok(patient);
-    }
-
-    @DeleteMapping("/{id}")
-    @Transactional
-    public ResponseEntity<?> deletePatient(@PathVariable Long id) {
-        Patient patient = entityManager.find(Patient.class, id);
-
-        if (patient == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient not found");
-        }
-
-        entityManager.remove(patient);
-
-        return ResponseEntity.ok("Patient deleted successfully");
-    }
-
-    private Patient findPatientByPersonId(Long personId) {
-        return entityManager
-                .createQuery("FROM Patient p WHERE p.person.id = :personId", Patient.class)
-                .setParameter("personId", personId)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-    }
-
-    private Patient findPatientByUserId(Long userId) {
-        return entityManager
-                .createQuery("FROM Patient p WHERE p.user.id = :userId", Patient.class)
-                .setParameter("userId", userId)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-    }
-
-    public static class PatientRequest {
-        private Long personId;
-        private Long userId;
-        private Boolean active;
-        private String notes;
-
-        private boolean userIdProvided;
-        private boolean notesProvided;
-
-        public Long getPersonId() {
-            return personId;
-        }
-
-        public void setPersonId(Long personId) {
-            this.personId = personId;
-        }
-
-        public Long getUserId() {
-            return userId;
-        }
-
-        public void setUserId(Long userId) {
-            this.userId = userId;
-            this.userIdProvided = true;
-        }
-
-        public Boolean getActive() {
-            return active;
-        }
-
-        public void setActive(Boolean active) {
-            this.active = active;
-        }
-
-        public String getNotes() {
-            return notes;
-        }
-
-        public void setNotes(String notes) {
-            this.notes = notes;
-            this.notesProvided = true;
-        }
-
-        public boolean isUserIdProvided() {
-            return userIdProvided;
-        }
-
-        public boolean isNotesProvided() {
-            return notesProvided;
-        }
-    }
+		return jwtService.extractUserId(token);
+	}
 }

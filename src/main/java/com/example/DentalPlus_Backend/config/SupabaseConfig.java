@@ -6,24 +6,24 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SupabaseConfig {
 
-    @Value("${supabase.url}")
-    private String url;
+	@Value("${supabase.url}")
+	private String url;
 
-    @Value("${supabase.key}")
-    private String key;
+	@Value("${supabase.key}")
+	private String key;
 
-    @Value("${supabase.bucket.documents}")
-    private String documentsBucket;
+	@Value("${supabase.bucket.documents}")
+	private String documentsBucket;
 
-    public String getUrl() {
-        return url;
-    }
+	public String getUrl() {
+		return url;
+	}
 
-    public String getKey() {
-        return key;
-    }
+	public String getKey() {
+		return key;
+	}
 
-    public String getDocumentsBucket() {
-        return documentsBucket;
-    }
+	public String getDocumentsBucket() {
+		return documentsBucket;
+	}
 }

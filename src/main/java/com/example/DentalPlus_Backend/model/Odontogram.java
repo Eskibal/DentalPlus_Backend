@@ -4,108 +4,100 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@JsonPropertyOrder({
-    "id",
-    "patient",
-    "viewMode",
-    "createdAt",
-    "updatedAt"
-})
+@JsonPropertyOrder({ "id", "patient", "viewMode", "createdAt", "updatedAt" })
 @Entity
 @Table(name = "odontogram")
 public class Odontogram {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(updatable = false)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(updatable = false)
+	private Long id;
 
-    @OneToOne(optional = false)
-    @JoinColumn(name = "patient_id", nullable = false, unique = true)
-    private Patient patient;
+	@OneToOne(optional = false)
+	@JoinColumn(name = "patient_id", nullable = false, unique = true)
+	private Patient patient;
 
-    @Column(nullable = false, length = 20)
-    private String viewMode;
+	@Column(nullable = false, length = 20)
+	private String viewMode;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+	@Column(nullable = false, updatable = false)
+	private LocalDateTime createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
+	@Column(nullable = false)
+	private LocalDateTime updatedAt;
 
-    public Odontogram() {
-    }
+	public Odontogram() {
+	}
 
-    public Odontogram(Patient patient) {
-        this.patient = patient;
-        this.viewMode = "MIXED";
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
+	public Odontogram(Patient patient) {
+		this.patient = patient;
+		this.viewMode = "MIXED";
+		this.createdAt = LocalDateTime.now();
+		this.updatedAt = LocalDateTime.now();
+	}
 
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-        this.viewMode = normalizeViewMode(this.viewMode);
+	@PrePersist
+	protected void onCreate() {
+		LocalDateTime now = LocalDateTime.now();
+		this.createdAt = now;
+		this.updatedAt = now;
+		this.viewMode = normalizeViewMode(this.viewMode);
 
-        if (this.viewMode == null) {
-            this.viewMode = "MIXED";
-        }
-    }
+		if (this.viewMode == null) {
+			this.viewMode = "MIXED";
+		}
+	}
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-        this.viewMode = normalizeViewMode(this.viewMode);
+	@PreUpdate
+	protected void onUpdate() {
+		this.updatedAt = LocalDateTime.now();
+		this.viewMode = normalizeViewMode(this.viewMode);
 
-        if (this.viewMode == null) {
-            this.viewMode = "MIXED";
-        }
-    }
+		if (this.viewMode == null) {
+			this.viewMode = "MIXED";
+		}
+	}
 
-    public Long getId() {
-        return id;
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public Patient getPatient() {
-        return patient;
-    }
+	public Patient getPatient() {
+		return patient;
+	}
 
-    public void setPatient(Patient patient) {
-        this.patient = patient;
-    }
+	public void setPatient(Patient patient) {
+		this.patient = patient;
+	}
 
-    public String getViewMode() {
-        return viewMode;
-    }
+	public String getViewMode() {
+		return viewMode;
+	}
 
-    public void setViewMode(String viewMode) {
-        this.viewMode = normalizeViewMode(viewMode);
-    }
+	public void setViewMode(String viewMode) {
+		this.viewMode = normalizeViewMode(viewMode);
+	}
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+	public LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
 
-    public static boolean isViewModeValid(String viewMode) {
-        if (viewMode == null || viewMode.isBlank()) {
-            return false;
-        }
+	public static boolean isViewModeValid(String viewMode) {
+		if (viewMode == null || viewMode.isBlank()) {
+			return false;
+		}
 
-        String normalized = viewMode.trim().toUpperCase();
+		String normalized = viewMode.trim().toUpperCase();
 
-        return normalized.equals("TEMPORARY")
-                || normalized.equals("PERMANENT")
-                || normalized.equals("MIXED");
-    }
+		return normalized.equals("TEMPORARY") || normalized.equals("PERMANENT") || normalized.equals("MIXED");
+	}
 
-    public static String normalizeViewMode(String viewMode) {
-        return viewMode == null ? null : viewMode.trim().toUpperCase();
-    }
+	public static String normalizeViewMode(String viewMode) {
+		return viewMode == null ? null : viewMode.trim().toUpperCase();
+	}
 }

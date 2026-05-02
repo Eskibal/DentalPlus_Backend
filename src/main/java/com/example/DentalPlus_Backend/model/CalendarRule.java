@@ -2,148 +2,259 @@ package com.example.DentalPlus_Backend.model;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.*;
+
 import java.time.LocalTime;
 
-@JsonPropertyOrder({
-    "id",
-    "clinic",
-    "dayOfWeek",
-    "startTime",
-    "endTime",
-    "ruleType",
-    "active"
-})
+@JsonPropertyOrder({ "id", "mondayStartTime", "mondayEndTime", "tuesdayStartTime", "tuesdayEndTime",
+		"wednesdayStartTime", "wednesdayEndTime", "thursdayStartTime", "thursdayEndTime", "fridayStartTime",
+		"fridayEndTime", "saturdayStartTime", "saturdayEndTime", "sundayStartTime", "sundayEndTime", "active",
+		"notes" })
 @Entity
 @Table(name = "calendar_rule")
 public class CalendarRule {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(updatable = false)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(updatable = false)
+	private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "clinic_id", nullable = false)
-    private Clinic clinic;
+	@Column
+	private LocalTime mondayStartTime;
 
-    @Column(nullable = false, length = 20)
-    private String dayOfWeek;
+	@Column
+	private LocalTime mondayEndTime;
 
-    @Column(nullable = false)
-    private LocalTime startTime;
+	@Column
+	private LocalTime tuesdayStartTime;
 
-    @Column(nullable = false)
-    private LocalTime endTime;
+	@Column
+	private LocalTime tuesdayEndTime;
 
-    @Column(nullable = false, length = 20)
-    private String ruleType;
+	@Column
+	private LocalTime wednesdayStartTime;
 
-    @Column(nullable = false)
-    private Boolean active;
+	@Column
+	private LocalTime wednesdayEndTime;
 
-    public CalendarRule() {
-    }
+	@Column
+	private LocalTime thursdayStartTime;
 
-    public CalendarRule(
-            Clinic clinic,
-            String dayOfWeek,
-            LocalTime startTime,
-            LocalTime endTime,
-            String ruleType,
-            Boolean active
-    ) {
-        this.clinic = clinic;
-        this.dayOfWeek = normalizeDayOfWeek(dayOfWeek);
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.ruleType = normalizeRuleType(ruleType);
-        this.active = active != null ? active : true;
-    }
+	@Column
+	private LocalTime thursdayEndTime;
 
-    public Long getId() {
-        return id;
-    }
+	@Column
+	private LocalTime fridayStartTime;
 
-    public Clinic getClinic() {
-        return clinic;
-    }
+	@Column
+	private LocalTime fridayEndTime;
 
-    public void setClinic(Clinic clinic) {
-        this.clinic = clinic;
-    }
+	@Column
+	private LocalTime saturdayStartTime;
 
-    public String getDayOfWeek() {
-        return dayOfWeek;
-    }
+	@Column
+	private LocalTime saturdayEndTime;
 
-    public void setDayOfWeek(String dayOfWeek) {
-        this.dayOfWeek = normalizeDayOfWeek(dayOfWeek);
-    }
+	@Column
+	private LocalTime sundayStartTime;
 
-    public LocalTime getStartTime() {
-        return startTime;
-    }
+	@Column
+	private LocalTime sundayEndTime;
 
-    public void setStartTime(LocalTime startTime) {
-        this.startTime = startTime;
-    }
+	@Column(nullable = false)
+	private Boolean active;
 
-    public LocalTime getEndTime() {
-        return endTime;
-    }
+	@Column(length = 500)
+	private String notes;
 
-    public void setEndTime(LocalTime endTime) {
-        this.endTime = endTime;
-    }
+	public CalendarRule() {
+	}
 
-    public String getRuleType() {
-        return ruleType;
-    }
+	public CalendarRule(LocalTime mondayStartTime, LocalTime mondayEndTime, LocalTime tuesdayStartTime,
+			LocalTime tuesdayEndTime, LocalTime wednesdayStartTime, LocalTime wednesdayEndTime,
+			LocalTime thursdayStartTime, LocalTime thursdayEndTime, LocalTime fridayStartTime, LocalTime fridayEndTime,
+			LocalTime saturdayStartTime, LocalTime saturdayEndTime, LocalTime sundayStartTime, LocalTime sundayEndTime,
+			Boolean active, String notes) {
+		this.mondayStartTime = mondayStartTime;
+		this.mondayEndTime = mondayEndTime;
+		this.tuesdayStartTime = tuesdayStartTime;
+		this.tuesdayEndTime = tuesdayEndTime;
+		this.wednesdayStartTime = wednesdayStartTime;
+		this.wednesdayEndTime = wednesdayEndTime;
+		this.thursdayStartTime = thursdayStartTime;
+		this.thursdayEndTime = thursdayEndTime;
+		this.fridayStartTime = fridayStartTime;
+		this.fridayEndTime = fridayEndTime;
+		this.saturdayStartTime = saturdayStartTime;
+		this.saturdayEndTime = saturdayEndTime;
+		this.sundayStartTime = sundayStartTime;
+		this.sundayEndTime = sundayEndTime;
+		this.active = active != null ? active : true;
+		this.notes = normalizeText(notes);
+	}
 
-    public void setRuleType(String ruleType) {
-        this.ruleType = normalizeRuleType(ruleType);
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public Boolean getActive() {
-        return active;
-    }
+	public LocalTime getMondayStartTime() {
+		return mondayStartTime;
+	}
 
-    public void setActive(Boolean active) {
-        this.active = active != null ? active : true;
-    }
+	public void setMondayStartTime(LocalTime mondayStartTime) {
+		this.mondayStartTime = mondayStartTime;
+	}
 
-    public static boolean isDayOfWeekValid(String dayOfWeek) {
-        if (dayOfWeek == null || dayOfWeek.isBlank()) {
-            return false;
-        }
+	public LocalTime getMondayEndTime() {
+		return mondayEndTime;
+	}
 
-        String normalized = dayOfWeek.trim().toUpperCase();
+	public void setMondayEndTime(LocalTime mondayEndTime) {
+		this.mondayEndTime = mondayEndTime;
+	}
 
-        return normalized.equals("MONDAY")
-                || normalized.equals("TUESDAY")
-                || normalized.equals("WEDNESDAY")
-                || normalized.equals("THURSDAY")
-                || normalized.equals("FRIDAY")
-                || normalized.equals("SATURDAY")
-                || normalized.equals("SUNDAY");
-    }
+	public LocalTime getTuesdayStartTime() {
+		return tuesdayStartTime;
+	}
 
-    public static boolean isRuleTypeValid(String ruleType) {
-        if (ruleType == null || ruleType.isBlank()) {
-            return false;
-        }
+	public void setTuesdayStartTime(LocalTime tuesdayStartTime) {
+		this.tuesdayStartTime = tuesdayStartTime;
+	}
 
-        String normalized = ruleType.trim().toUpperCase();
+	public LocalTime getTuesdayEndTime() {
+		return tuesdayEndTime;
+	}
 
-        return normalized.equals("WORKING")
-                || normalized.equals("BREAK");
-    }
+	public void setTuesdayEndTime(LocalTime tuesdayEndTime) {
+		this.tuesdayEndTime = tuesdayEndTime;
+	}
 
-    public static String normalizeDayOfWeek(String dayOfWeek) {
-        return dayOfWeek == null ? null : dayOfWeek.trim().toUpperCase();
-    }
+	public LocalTime getWednesdayStartTime() {
+		return wednesdayStartTime;
+	}
 
-    public static String normalizeRuleType(String ruleType) {
-        return ruleType == null ? null : ruleType.trim().toUpperCase();
-    }
+	public void setWednesdayStartTime(LocalTime wednesdayStartTime) {
+		this.wednesdayStartTime = wednesdayStartTime;
+	}
+
+	public LocalTime getWednesdayEndTime() {
+		return wednesdayEndTime;
+	}
+
+	public void setWednesdayEndTime(LocalTime wednesdayEndTime) {
+		this.wednesdayEndTime = wednesdayEndTime;
+	}
+
+	public LocalTime getThursdayStartTime() {
+		return thursdayStartTime;
+	}
+
+	public void setThursdayStartTime(LocalTime thursdayStartTime) {
+		this.thursdayStartTime = thursdayStartTime;
+	}
+
+	public LocalTime getThursdayEndTime() {
+		return thursdayEndTime;
+	}
+
+	public void setThursdayEndTime(LocalTime thursdayEndTime) {
+		this.thursdayEndTime = thursdayEndTime;
+	}
+
+	public LocalTime getFridayStartTime() {
+		return fridayStartTime;
+	}
+
+	public void setFridayStartTime(LocalTime fridayStartTime) {
+		this.fridayStartTime = fridayStartTime;
+	}
+
+	public LocalTime getFridayEndTime() {
+		return fridayEndTime;
+	}
+
+	public void setFridayEndTime(LocalTime fridayEndTime) {
+		this.fridayEndTime = fridayEndTime;
+	}
+
+	public LocalTime getSaturdayStartTime() {
+		return saturdayStartTime;
+	}
+
+	public void setSaturdayStartTime(LocalTime saturdayStartTime) {
+		this.saturdayStartTime = saturdayStartTime;
+	}
+
+	public LocalTime getSaturdayEndTime() {
+		return saturdayEndTime;
+	}
+
+	public void setSaturdayEndTime(LocalTime saturdayEndTime) {
+		this.saturdayEndTime = saturdayEndTime;
+	}
+
+	public LocalTime getSundayStartTime() {
+		return sundayStartTime;
+	}
+
+	public void setSundayStartTime(LocalTime sundayStartTime) {
+		this.sundayStartTime = sundayStartTime;
+	}
+
+	public LocalTime getSundayEndTime() {
+		return sundayEndTime;
+	}
+
+	public void setSundayEndTime(LocalTime sundayEndTime) {
+		this.sundayEndTime = sundayEndTime;
+	}
+
+	public Boolean getActive() {
+		return active;
+	}
+
+	public void setActive(Boolean active) {
+		this.active = active != null ? active : true;
+	}
+
+	public String getNotes() {
+		return notes;
+	}
+
+	public void setNotes(String notes) {
+		this.notes = normalizeText(notes);
+	}
+
+	public static boolean isDayRangeValid(LocalTime startTime, LocalTime endTime) {
+		if (startTime == null && endTime == null) {
+			return true;
+		}
+
+		if (startTime == null || endTime == null) {
+			return false;
+		}
+
+		return endTime.isAfter(startTime);
+	}
+
+	public static boolean isNotesValid(String notes) {
+		return notes == null || notes.isBlank() || notes.trim().length() <= 500;
+	}
+
+	public static boolean isWeeklyScheduleValid(CalendarRule calendarRule) {
+		if (calendarRule == null) {
+			return false;
+		}
+
+		return isDayRangeValid(calendarRule.getMondayStartTime(), calendarRule.getMondayEndTime())
+				&& isDayRangeValid(calendarRule.getTuesdayStartTime(), calendarRule.getTuesdayEndTime())
+				&& isDayRangeValid(calendarRule.getWednesdayStartTime(), calendarRule.getWednesdayEndTime())
+				&& isDayRangeValid(calendarRule.getThursdayStartTime(), calendarRule.getThursdayEndTime())
+				&& isDayRangeValid(calendarRule.getFridayStartTime(), calendarRule.getFridayEndTime())
+				&& isDayRangeValid(calendarRule.getSaturdayStartTime(), calendarRule.getSaturdayEndTime())
+				&& isDayRangeValid(calendarRule.getSundayStartTime(), calendarRule.getSundayEndTime());
+	}
+
+	public static String normalizeText(String text) {
+		return text == null ? null : text.trim();
+	}
 }

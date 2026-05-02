@@ -1,220 +1,135 @@
 package com.example.DentalPlus_Backend.controller;
 
-import com.example.DentalPlus_Backend.model.Dentist;
-import com.example.DentalPlus_Backend.model.User;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional;
+import com.example.DentalPlus_Backend.dto.LoginRequest;
+import com.example.DentalPlus_Backend.dto.LoginResponse;
+import com.example.DentalPlus_Backend.dto.ProfileDto;
+import com.example.DentalPlus_Backend.service.UserService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/user")
 public class UserController {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+	private final UserService userService;
 
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+	public UserController(UserService userService) {
+		this.userService = userService;
+	}
 
-    @PostMapping("/dentist")
-    @Transactional
-    public ResponseEntity<?> createDentist(@RequestBody Dentist request) {
+	@PostMapping("/login")
+	public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+		try {
+			LoginResponse response = userService.login(request);
+			return ResponseEntity.ok(response);
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+		}
+	}
 
-        if (!User.isUsernameValid(request.getUsername())) {
-            return ResponseEntity.badRequest().body("Invalid username");
-        }
+	@GetMapping("/me")
+	public ResponseEntity<?> getMyProfile() {
+		Long callerUserId = getAuthenticatedUserId();
 
-        if (!User.isEmailValid(request.getEmail())) {
-            return ResponseEntity.badRequest().body("Invalid email");
-        }
+		System.out.println("[USER/ME GET] callerUserId: " + callerUserId);
 
-        if (!User.isPasswordValid(request.getPassword())) {
-            return ResponseEntity.badRequest().body("Invalid password");
-        }
+		if (callerUserId == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+		}
 
-        if (!User.isThemePreferenceValid(request.getThemePreference())) {
-            return ResponseEntity.badRequest().body("Invalid themePreference");
-        }
+		try {
+			return ResponseEntity.ok(userService.getMyProfile(callerUserId));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+		}
+	}
 
-        if (!User.isLanguagePreferenceValid(request.getLanguagePreference())) {
-            return ResponseEntity.badRequest().body("Invalid languagePreference");
-        }
+	@PutMapping(value = "/me", consumes = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> updateMyProfileJson(@RequestBody ProfileDto request) {
+		System.out.println("[USER/ME PUT JSON] Controller reached");
 
-        if (!User.isNotesValid(request.getNotes())) {
-            return ResponseEntity.badRequest().body("Invalid notes");
-        }
+		Long callerUserId = getAuthenticatedUserId();
 
-        String normalizedEmail = User.normalizeEmail(request.getEmail());
+		System.out.println("[USER/ME PUT JSON] callerUserId: " + callerUserId);
 
-        if (findByEmail(normalizedEmail) != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
-        }
+		if (callerUserId == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+		}
 
-        if (request.getUsername() != null && !request.getUsername().isBlank()) {
-            User userWithSameUsername = findByUsername(request.getUsername().trim());
-            if (userWithSameUsername != null) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
-            }
-        }
+		try {
+			return ResponseEntity.ok(userService.updateMyProfile(callerUserId, request, null, false));
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+			return ResponseEntity.badRequest().body(e.getMessage());
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+		}
+	}
 
-        User user = new User(
-                request.getUsername(),
-                normalizedEmail,
-                encoder.encode(request.getPassword()),
-                request.getThemePreference(),
-                request.getLanguagePreference(),
-                request.getActive(),
-                request.getNotes()
-        );
+	@PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<?> updateMyProfileMultipart(@RequestPart("profile") ProfileDto request,
+			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage,
+			@RequestParam(value = "removeProfileImage", required = false, defaultValue = "false") Boolean removeProfileImage) {
+		System.out.println("[USER/ME PUT MULTIPART] Controller reached");
 
-        entityManager.persist(user);
+		Long callerUserId = getAuthenticatedUserId();
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(buildSafeUser(user));
-    }
+		System.out.println("[USER/ME PUT MULTIPART] callerUserId: " + callerUserId);
 
-    @GetMapping
-    public List<User> getAll() {
-        List<User> users = entityManager
-                .createQuery("FROM User", User.class)
-                .getResultList();
+		if (callerUserId == null) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+		}
 
-        return users.stream()
-                .map(this::buildSafeUser)
-                .toList();
-    }
+		try {
+			return ResponseEntity.ok(userService.updateMyProfile(callerUserId, request, profileImage,
+					Boolean.TRUE.equals(removeProfileImage)));
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+		}
+	}
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
-        User user = entityManager.find(User.class, id);
+	private Long getAuthenticatedUserId() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (user == null) {
-            return ResponseEntity.notFound().build();
-        }
+		System.out.println("[AUTH DEBUG] authentication: " + authentication);
 
-        if (!Dentist.isTextValid(request.getSpeciality())) {
-            return ResponseEntity.badRequest().body("Invalid speciality");
-        }
+		if (authentication == null || !authentication.isAuthenticated()) {
+			return null;
+		}
 
-        if (!User.isUsernameValid(request.getUsername())) {
-            return ResponseEntity.badRequest().body("Invalid username");
-        }
+		Object principal = authentication.getPrincipal();
 
-        if (!User.isEmailValid(request.getEmail())) {
-            return ResponseEntity.badRequest().body("Invalid email");
-        }
+		System.out.println("[AUTH DEBUG] principal: " + principal);
+		System.out.println(
+				"[AUTH DEBUG] principal class: " + (principal == null ? null : principal.getClass().getName()));
 
-        if (!User.isThemePreferenceValid(request.getThemePreference())) {
-            return ResponseEntity.badRequest().body("Invalid themePreference");
-        }
+		if (principal instanceof Long) {
+			return (Long) principal;
+		}
 
-        if (!User.isLanguagePreferenceValid(request.getLanguagePreference())) {
-            return ResponseEntity.badRequest().body("Invalid languagePreference");
-        }
+		if (principal instanceof Integer) {
+			return ((Integer) principal).longValue();
+		}
 
-        if (!User.isNotesValid(request.getNotes())) {
-            return ResponseEntity.badRequest().body("Invalid notes");
-        }
+		if (principal instanceof String) {
+			try {
+				return Long.parseLong((String) principal);
+			} catch (NumberFormatException e) {
+				return null;
+			}
+		}
 
-        String normalizedEmail = User.normalizeEmail(request.getEmail());
-
-        User existingByEmail = findByEmail(normalizedEmail);
-        if (existingByEmail != null && !existingByEmail.getId().equals(id)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already in use");
-        }
-
-        if (request.getUsername() != null && !request.getUsername().isBlank()) {
-            User existingByUsername = findByUsername(request.getUsername().trim());
-            if (existingByUsername != null && !existingByUsername.getId().equals(id)) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already in use");
-            }
-        }
-
-        user.setUsername(request.getUsername());
-        user.setEmail(normalizedEmail);
-        user.setThemePreference(request.getThemePreference());
-        user.setLanguagePreference(request.getLanguagePreference());
-        user.setNotes(request.getNotes());
-
-        if (request.getActive() != null) {
-            user.setActive(request.getActive());
-        }
-
-        User existingUser = entityManager
-                .createQuery("FROM User u WHERE u.username = :username", User.class)
-                .setParameter("username", username)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-
-        if (existingUser != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
-        }
-
-        User newUser = new User(username, encoder.encode(requestUser.getPassword()));
-        entityManager.persist(newUser);
-
-        Dentist newDentist = new Dentist(
-                newUser,
-                request.getSpeciality(),
-                request.getVisitWeekday(),
-                request.getCity(),
-                request.getDirection()
-        );
-
-        entityManager.persist(newDentist);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(buildSafeDentistResponse(newDentist));
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User request) {
-
-        if (!User.isUsernameValid(request.getUsername())
-                || request.getPassword() == null
-                || request.getPassword().isBlank()) {
-            return ResponseEntity.badRequest().body("Invalid credentials");
-        }
-
-        String normalizedEmail = User.normalizeEmail(request.getEmail());
-        User user = findByEmail(normalizedEmail);
-
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-        }
-
-        if (!encoder.matches(request.getPassword(), user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-        }
-
-        Dentist dentist = entityManager.find(Dentist.class, user.getId());
-
-        if (dentist == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Dentist profile not found");
-        }
-
-        return ResponseEntity.ok(buildSafeDentistResponse(dentist));
-    }
-
-    private User findByUsername(String username) {
-        return entityManager
-                .createQuery("FROM User u WHERE u.username = :username", User.class)
-                .setParameter("username", username)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
-    }
-
-    private User buildSafeUser(User user) {
-        User safeUser = new User();
-        safeUser.setUsername(user.getUsername());
-        safeUser.setEmail(user.getEmail());
-        safeUser.setThemePreference(user.getThemePreference());
-        safeUser.setLanguagePreference(user.getLanguagePreference());
-        safeUser.setActive(user.getActive());
-        safeUser.setNotes(user.getNotes());
-        return safeUser;
-    }
+		return null;
+	}
 }
