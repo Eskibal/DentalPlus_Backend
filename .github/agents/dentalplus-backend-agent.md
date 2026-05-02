@@ -4,7 +4,7 @@ Este documento define cómo debe trabajar una IA, asistente de código o copilot
 
 El objetivo principal es evitar cambios que rompan la arquitectura, la seguridad, los endpoints, el seed, la colección Postman o la compatibilidad con el frontend.
 
-> Este archivo debe vivir en la raíz del proyecto, al mismo nivel que `pom.xml`, `Dockerfile`, `README.md`, `src/` y `postman/`.
+> Ruta recomendada para este proyecto: `.github/agents/dentalplus-backend-agent.md`. También puede mantenerse una copia en la raíz como `AGENTS.md` si se quiere referencia general.
 
 ---
 
@@ -1139,6 +1139,49 @@ Casos delicados:
 - `ddl-auto=update` alterando esquema inesperadamente.
 
 ---
+
+
+### Desincronización entre entidades Java y esquema MySQL
+
+La IA debe tener en cuenta que la base de datos externa puede conservar columnas antiguas que ya no existen en las entidades Java. `spring.jpa.hibernate.ddl-auto=update` puede actualizar parte del esquema, pero no debe asumirse que elimina columnas obsoletas.
+
+Caso real detectado:
+
+```text
+Field 'city' doesn't have a default value
+insert into dentist (...)
+```
+
+Interpretación:
+
+- la tabla `dentist` tenía una columna antigua `city` obligatoria;
+- la entidad `Dentist` actual no contiene `city`;
+- los datos personales como ciudad pertenecen a `Person`;
+- el seed falla al insertar un dentista.
+
+Antes de proponer añadir campos al modelo, comprobar si la columna es realmente parte del diseño actual o si es residuo de una versión anterior.
+
+Comandos útiles para diagnóstico:
+
+```sql
+SHOW COLUMNS FROM dentist;
+
+SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'dentist';
+```
+
+Si una columna obligatoria no existe en la entidad Java ni forma parte del diseño actual, proponer corregir el esquema o migración, no añadir código innecesario.
+
+Ejemplo de corrección para una columna antigua:
+
+```sql
+ALTER TABLE dentist DROP COLUMN city;
+```
+
+Regla: si se detecta desincronización entre entidad y tabla, actualizar README, agente, seed/tests si aplica, y valorar migración formal.
+
 
 ## 16. Documentación que debe mantenerse sincronizada
 
