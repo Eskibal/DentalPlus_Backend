@@ -8,11 +8,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CloudinaryConfig {
 
-    @Value("${cloudinary.url}")
-    private String cloudinaryUrl;
+	@Value("${cloudinary.url}")
+	private String cloudinaryUrl;
 
-    @Bean
-    public Cloudinary cloudinary() {
-        return new Cloudinary(cloudinaryUrl); 
-    }
+	@Bean
+	public Cloudinary cloudinary() {
+		return new Cloudinary(cloudinaryUrl);
+	}
 }

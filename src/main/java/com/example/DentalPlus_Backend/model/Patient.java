@@ -1,102 +1,106 @@
 package com.example.DentalPlus_Backend.model;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.*;
+
 import java.time.LocalDate;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-@JsonPropertyOrder({
-    "id",
-    "person",
-    "user",
-    "registrationDate",
-    "active",
-    "notes"
-})
+@JsonPropertyOrder({ "id", "person", "user", "clinic", "registrationDate", "active", "notes" })
 @Entity
 @Table(name = "patient")
 public class Patient {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(updatable = false)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(updatable = false)
+	private Long id;
 
-    @OneToOne(optional = false)
-    @JoinColumn(name = "person_id", nullable = false, unique = true)
-    private Person person;
+	@OneToOne(optional = false)
+	@JoinColumn(name = "person_id", nullable = false, unique = true)
+	private Person person;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", unique = true)
-    private User user;
+	@OneToOne
+	@JoinColumn(name = "user_id", unique = true)
+	private User user;
 
-    @Column(nullable = false)
-    private LocalDate registrationDate;
+	@ManyToOne(optional = false)
+	@JoinColumn(name = "clinic_id", nullable = false)
+	private Clinic clinic;
 
-    @Column(nullable = false)
-    private Boolean active;
+	@Column(nullable = false)
+	private LocalDate registrationDate;
 
-    @Column(length = 500)
-    private String notes;
+	@Column(nullable = false)
+	private Boolean active;
 
-    public Patient() {
-    }
+	@Column(length = 500)
+	private String notes;
 
-    public Patient(Person person, User user, Boolean active, String notes) {
-        this.person = person;
-        this.user = user;
-        this.registrationDate = LocalDate.now();
-        this.active = active != null ? active : true;
-        this.notes = normalizeText(notes);
-    }
+	public Patient() {
+	}
 
-    public Long getId() {
-        return id;
-    }
+	public Patient(Person person, User user, Clinic clinic, Boolean active, String notes) {
+		this.person = person;
+		this.user = user;
+		this.clinic = clinic;
+		this.registrationDate = LocalDate.now();
+		this.active = active != null ? active : true;
+		this.notes = normalizeText(notes);
+	}
 
-    public Person getPerson() {
-        return person;
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public void setPerson(Person person) {
-        this.person = person;
-    }
+	public Person getPerson() {
+		return person;
+	}
 
-    public User getUser() {
-        return user;
-    }
+	public void setPerson(Person person) {
+		this.person = person;
+	}
 
-    public void setUser(User user) {
-        this.user = user;
-    }
+	public User getUser() {
+		return user;
+	}
 
-    public LocalDate getRegistrationDate() {
-        return registrationDate;
-    }
+	public void setUser(User user) {
+		this.user = user;
+	}
 
-    public Boolean getActive() {
-        return active;
-    }
+	public Clinic getClinic() {
+		return clinic;
+	}
 
-    public void setActive(Boolean active) {
-        this.active = active != null ? active : true;
-    }
+	public void setClinic(Clinic clinic) {
+		this.clinic = clinic;
+	}
 
-    public String getNotes() {
-        return notes;
-    }
+	public LocalDate getRegistrationDate() {
+		return registrationDate;
+	}
 
-    public void setNotes(String notes) {
-        this.notes = normalizeText(notes);
-    }
+	public Boolean getActive() {
+		return active;
+	}
 
-    public static boolean isNotesValid(String notes) {
-        return notes == null
-                || notes.isBlank()
-                || notes.trim().length() <= 500;
-    }
+	public void setActive(Boolean active) {
+		this.active = active != null ? active : true;
+	}
 
-    public static String normalizeText(String text) {
-        return text == null ? null : text.trim();
-    }
+	public String getNotes() {
+		return notes;
+	}
+
+	public void setNotes(String notes) {
+		this.notes = normalizeText(notes);
+	}
+
+	public static boolean isNotesValid(String notes) {
+		return notes == null || notes.isBlank() || notes.trim().length() <= 500;
+	}
+
+	public static String normalizeText(String text) {
+		return text == null ? null : text.trim();
+	}
 }
