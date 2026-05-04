@@ -1,4 +1,4 @@
-# DentalPlus Backend
+# DentalPlus Back-end Repository
 
 Backend REST para **DentalPlus**, una aplicación de gestión para una clínica dental. El proyecto está desarrollado con **Java + Spring Boot** y cubre autenticación JWT, roles de usuario, pacientes, citas, odontogramas, documentos PDF, imágenes de perfil, datos seed, colección Postman, despliegue con Docker/Render y conexión con servicios externos.
 
