@@ -99,7 +99,12 @@ public class PatientService {
 
 		personDao.save(person);
 
-		Patient patient = new Patient(person, null, clinic, request.getActive(), request.getNotes());
+		Patient patient = new Patient(person, null, clinic, request.getActive(), request.getMedicalAlert(),
+				request.getNotes());
+
+		if (!Patient.isMedicalAlertValid(patient.getMedicalAlert())) {
+			throw new IllegalArgumentException("Invalid medicalAlert");
+		}
 
 		if (!Patient.isNotesValid(patient.getNotes())) {
 			throw new IllegalArgumentException("Invalid notes");
@@ -126,6 +131,13 @@ public class PatientService {
 		if (request.getPerson() != null) {
 			updatePatientPerson(patient.getPerson(), request.getPerson());
 			personDao.update(patient.getPerson());
+		}
+
+		if (request.getMedicalAlert() != null) {
+			if (!Patient.isMedicalAlertValid(request.getMedicalAlert())) {
+				throw new IllegalArgumentException("Invalid medicalAlert");
+			}
+			patient.setMedicalAlert(request.getMedicalAlert());
 		}
 
 		if (request.getNotes() != null) {

@@ -13,6 +13,7 @@ import com.example.DentalPlus_Backend.model.DentalSurface;
 import com.example.DentalPlus_Backend.model.DentalSurfaceMark;
 import com.example.DentalPlus_Backend.model.Inventory;
 import com.example.DentalPlus_Backend.model.Odontogram;
+import com.example.DentalPlus_Backend.model.Patient;
 import com.example.DentalPlus_Backend.model.Person;
 import com.example.DentalPlus_Backend.model.Product;
 import com.example.DentalPlus_Backend.model.User;
@@ -116,19 +117,25 @@ public class ApplicationTest {
 
 	@Test
 	@Order(4)
-	@DisplayName("User and person validations work correctly")
-	void userAndPersonValidationsWorkCorrectly() {
-		assertAll(() -> assertTrue(User.isUsernameValid("test.user")), () -> assertFalse(User.isUsernameValid(" ")),
+	@DisplayName("User, person and patient validations work correctly")
+	void userPersonAndPatientValidationsWorkCorrectly() {
+		assertAll(() -> assertTrue(User.isUsernameValid("test.user")),
+				() -> assertFalse(User.isUsernameValid(" ")),
 				() -> assertTrue(User.isPasswordValid("Password123")),
 				() -> assertFalse(User.isPasswordValid("Password")),
-				() -> assertFalse(User.isPasswordValid("12345678")), () -> assertFalse(User.isPasswordValid("Short1")),
+				() -> assertFalse(User.isPasswordValid("12345678")),
+				() -> assertFalse(User.isPasswordValid("Short1")),
 				() -> assertTrue(User.isThemePreferenceValid("LIGHT")),
 				() -> assertTrue(User.isThemePreferenceValid("DARK")),
 				() -> assertTrue(User.isThemePreferenceValid("SYSTEM")),
 				() -> assertFalse(User.isThemePreferenceValid("UNKNOWN_THEME")),
-				() -> assertTrue(User.isLanguagePreferenceValid("en")), () -> assertTrue(Person.isNameValid("Test")),
-				() -> assertFalse(Person.isNameValid(" ")), () -> assertTrue(Person.isFirstSurnameValid("User")),
-				() -> assertTrue(Person.isSecondSurnameValid(null)), () -> assertTrue(Person.isGenderValid("OTHER")),
+				() -> assertTrue(User.isLanguagePreferenceValid("en")),
+
+				() -> assertTrue(Person.isNameValid("Test")),
+				() -> assertFalse(Person.isNameValid(" ")),
+				() -> assertTrue(Person.isFirstSurnameValid("User")),
+				() -> assertTrue(Person.isSecondSurnameValid(null)),
+				() -> assertTrue(Person.isGenderValid("OTHER")),
 				() -> assertTrue(Person.isEmailValid("test@example.com")),
 				() -> assertTrue(Person.isEmailValid("test.user+sample@example.com")),
 				() -> assertFalse(Person.isEmailValid("invalid-email")),
@@ -137,9 +144,27 @@ public class ApplicationTest {
 				() -> assertTrue(Person.isAddressValid("Test Address")),
 				() -> assertTrue(Person.isCityValid("Test City")),
 				() -> assertTrue(Person.isProfileImageValid("https://example.com/profile.png")),
-				() -> assertTrue(Person.isNotesValid("Valid notes")));
+				() -> assertTrue(Person.isNotesValid("Valid notes")),
 
-		printOk("User and person validations passed.");
+				() -> assertTrue(Patient.isMedicalAlertValid(null)),
+				() -> assertTrue(Patient.isMedicalAlertValid("")),
+				() -> assertTrue(Patient.isMedicalAlertValid("ALLERGY:PENICILLIN")),
+				() -> assertTrue(Patient.isMedicalAlertValid("ALLERGY:LATEX")),
+				() -> assertTrue(Patient.isMedicalAlertValid("ALLERGY:ANESTHETIC")),
+				() -> assertTrue(Patient.isMedicalAlertValid("ADVERSE_REACTION:ANESTHETIC")),
+				() -> assertTrue(Patient.isMedicalAlertValid("INFECTION_RISK:HIV")),
+				() -> assertTrue(Patient.isMedicalAlertValid("INFECTION_RISK:HEPATITIS_B")),
+				() -> assertTrue(Patient.isMedicalAlertValid("INFECTION_RISK:HEPATITIS_C")),
+				() -> assertTrue(Patient.isMedicalAlertValid("BLEEDING_RISK:ANTICOAGULANTS")),
+				() -> assertTrue(Patient.isMedicalAlertValid("CARDIAC_RISK:ANTIBIOTIC_PROPHYLAXIS")),
+				() -> assertTrue(Patient.isMedicalAlertValid("OTHER:REVIEW_NOTES")),
+				() -> assertTrue(Patient.isMedicalAlertValid("ALLERGY:PENICILLIN|INFECTION_RISK:HEPATITIS_B")),
+				() -> assertTrue(Patient.isMedicalAlertValid(" allergy:penicillin | infection_risk:hiv ")),
+				() -> assertFalse(Patient.isMedicalAlertValid("UNKNOWN_ALERT")),
+				() -> assertFalse(Patient.isMedicalAlertValid("ALLERGY:UNKNOWN")),
+				() -> assertFalse(Patient.isMedicalAlertValid("ALLERGY:PENICILLIN|UNKNOWN_ALERT")));
+
+		printOk("User, person and patient validations passed.");
 	}
 
 	@Test
@@ -300,8 +325,10 @@ public class ApplicationTest {
 		assertAll(() -> assertTrue(Product.isNameValid("Diagnostic Product")),
 				() -> assertFalse(Product.isNameValid(" ")),
 				() -> assertTrue(Product.isDescriptionValid("Diagnostic product description")),
-				() -> assertTrue(Inventory.isQuantityValid(0)), () -> assertTrue(Inventory.isQuantityValid(10)),
-				() -> assertFalse(Inventory.isQuantityValid(-1)), () -> assertTrue(Inventory.isMinimumQuantityValid(0)),
+				() -> assertTrue(Inventory.isQuantityValid(0)),
+				() -> assertTrue(Inventory.isQuantityValid(10)),
+				() -> assertFalse(Inventory.isQuantityValid(-1)),
+				() -> assertTrue(Inventory.isMinimumQuantityValid(0)),
 				() -> assertTrue(Inventory.isMinimumQuantityValid(5)),
 				() -> assertFalse(Inventory.isMinimumQuantityValid(-1)),
 				() -> assertTrue(Inventory.isNotesValid("Diagnostic inventory notes")));
