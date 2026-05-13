@@ -12,6 +12,7 @@ public class AppointmentDto {
 	private String dentistName;
 	private Long patientId;
 	private String patientName;
+	private String patientMedicalAlert;
 	private LocalDateTime startDateTime;
 	private LocalDateTime endDateTime;
 	private String status;
@@ -35,6 +36,7 @@ public class AppointmentDto {
 				: buildPersonFullName(appointment.getPatient().getPerson().getName(),
 						appointment.getPatient().getPerson().getFirstSurname(),
 						appointment.getPatient().getPerson().getSecondSurname());
+		this.patientMedicalAlert = appointment.getPatient() == null ? null : appointment.getPatient().getMedicalAlert();
 		this.startDateTime = appointment.getStartDateTime();
 		this.endDateTime = appointment.getEndDateTime();
 		this.status = appointment.getStatus();
@@ -93,6 +95,10 @@ public class AppointmentDto {
 	public String getPatientName() {
 		return patientName;
 	}
+	
+	public String getPatientMedicalAlert() {
+		return patientMedicalAlert;
+	}
 
 	public LocalDateTime getStartDateTime() {
 		return startDateTime;
@@ -140,6 +146,10 @@ public class AppointmentDto {
 
 	public void setPatientName(String patientName) {
 		this.patientName = patientName;
+	}
+	
+	public void setPatientMedicalAlert(String patientMedicalAlert) {
+		this.patientMedicalAlert = patientMedicalAlert;
 	}
 
 	public void setStartDateTime(LocalDateTime startDateTime) {

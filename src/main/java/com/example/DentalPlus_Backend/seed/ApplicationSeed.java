@@ -296,17 +296,17 @@ public class ApplicationSeed {
 				"Secondary", "Sample", clinic, "DENTIST", "Restorative Dentistry");
 
 		Patient patientOne = createPatient(clinic, "Patient", "One", "Sample", "patient.one@example.com", "10000000001",
-				LocalDate.of(1990, 1, 1), "Routine dental checkup");
+				LocalDate.of(1990, 1, 1), "ALLERGY:PENICILLIN", "Routine dental checkup");
 
 		Patient patientTwo = createPatient(clinic, "Patient", "Two", "Sample", "patient.two@example.com", "10000000002",
-				LocalDate.of(1988, 2, 2), "Preventive dental visit");
+				LocalDate.of(1988, 2, 2), null, "Preventive dental visit");
 
 		Patient patientThree = createPatient(clinic, "Patient", "Three", "Sample", "patient.three@example.com",
-				"10000000003", LocalDate.of(1995, 3, 3), "Dental assessment");
+				"10000000003", LocalDate.of(1995, 3, 3), "INFECTION_RISK:HEPATITIS_B", "Dental assessment");
 
 		Patient patientFour = createPatient(clinic, "Patient", "Four", "Sample", "patient.four@example.com",
-				"10000000004", LocalDate.of(1992, 4, 4), "Follow-up consultation");
-
+				"10000000004", LocalDate.of(1992, 4, 4), null, "Follow-up consultation");
+		
 		Odontogram odontogramOne = createOdontogram(patientOne);
 		Odontogram odontogramTwo = createOdontogram(patientTwo);
 		Odontogram odontogramThree = createOdontogram(patientThree);
@@ -397,11 +397,11 @@ public class ApplicationSeed {
 	}
 
 	private Patient createPatient(Clinic clinic, String name, String firstSurname, String secondSurname, String email,
-			String phoneNumber, LocalDate birthDate, String consultationReason) {
+			String phoneNumber, LocalDate birthDate, String medicalAlert, String consultationReason) {
 		Person person = persist(new Person(name, firstSurname, secondSurname, birthDate, "OTHER", email, "+1",
 				phoneNumber, "Default Address", "Default City", null, true, consultationReason));
 
-		return persist(new Patient(person, null, clinic, true, consultationReason));
+		return persist(new Patient(person, null, clinic, true, medicalAlert, consultationReason));
 	}
 
 	private Odontogram createOdontogram(Patient patient) {
@@ -646,6 +646,12 @@ public class ApplicationSeed {
 				+ (firstDocumentId == null ? "not created because optional PDF was not uploaded" : firstDocumentId));
 		System.out.println("pieceNumber    = 11");
 		System.out.println("surfaceType    = MESIAL");
+		System.out.println();
+		System.out.println("Seed medical alerts:");
+		System.out.println("Patient 1 -> ALLERGY:PENICILLIN");
+		System.out.println("Patient 2 -> no medical alert");
+		System.out.println("Patient 3 -> INFECTION_RISK:HEPATITIS_B");
+		System.out.println("Patient 4 -> no medical alert");
 		System.out.println();
 		System.out.println("Seed dental examples:");
 		System.out.println("Patient 1 / Piece 11 / MESIAL   -> CARIES / PENDING");

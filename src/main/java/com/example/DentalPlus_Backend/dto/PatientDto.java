@@ -12,6 +12,7 @@ public class PatientDto {
 	private String clinicName;
 	private LocalDate registrationDate;
 	private Boolean active;
+	private String medicalAlert;
 	private String notes;
 	private PersonDto person;
 	private List<DocumentDto> documents;
@@ -26,6 +27,7 @@ public class PatientDto {
 		this.clinicName = patient.getClinic() == null ? null : patient.getClinic().getName();
 		this.registrationDate = patient.getRegistrationDate();
 		this.active = patient.getActive();
+		this.medicalAlert = patient.getMedicalAlert();
 		this.notes = patient.getNotes();
 		this.person = patient.getPerson() == null ? null : new PersonDto(patient.getPerson());
 	}
@@ -57,6 +59,10 @@ public class PatientDto {
 
 	public Boolean getActive() {
 		return active;
+	}
+	
+	public String getMedicalAlert() {
+		return medicalAlert;
 	}
 
 	public String getNotes() {
@@ -93,6 +99,10 @@ public class PatientDto {
 
 	public void setActive(Boolean active) {
 		this.active = active;
+	}
+	
+	public void setMedicalAlert(String medicalAlert) {
+		this.medicalAlert = medicalAlert;
 	}
 
 	public void setNotes(String notes) {
