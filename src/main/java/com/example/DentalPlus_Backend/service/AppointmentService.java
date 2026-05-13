@@ -87,8 +87,8 @@ public class AppointmentService {
 		calendarService.validateAppointmentAvailability(dentist, box, patient, request.getStartDateTime(),
 				request.getEndDateTime(), null);
 
-		Appointment appointment = new Appointment(box, dentist, patient, request.getStartDateTime(),
-				request.getEndDateTime(), request.getStatus(), request.getNotes(), request.getActive());
+		Appointment appointment = new Appointment(box, dentist, patient, request.getStartDateTime(), request.getEndDateTime(),
+				request.getStatus(), request.getTreatment(), request.getNotes(), request.getActive());
 
 		appointmentDao.save(appointment);
 
@@ -137,6 +137,13 @@ public class AppointmentService {
 				throw new IllegalArgumentException("Invalid status");
 			}
 			appointment.setStatus(request.getStatus());
+		}
+		
+		if (request.getTreatment() != null) {
+			if (!Appointment.isTreatmentValid(request.getTreatment())) {
+				throw new IllegalArgumentException("Invalid treatment");
+			}
+			appointment.setTreatment(request.getTreatment());
 		}
 
 		if (request.getNotes() != null) {
@@ -269,6 +276,10 @@ public class AppointmentService {
 
 		if (!Appointment.isStatusValid(request.getStatus())) {
 			throw new IllegalArgumentException("Invalid status");
+		}
+
+		if (!Appointment.isTreatmentValid(request.getTreatment())) {
+			throw new IllegalArgumentException("Invalid treatment");
 		}
 
 		if (!Appointment.isNotesValid(request.getNotes())) {

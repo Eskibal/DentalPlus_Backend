@@ -16,6 +16,7 @@ public class AppointmentDto {
 	private LocalDateTime startDateTime;
 	private LocalDateTime endDateTime;
 	private String status;
+	private String treatment;
 	private String notes;
 	private Boolean active;
 
@@ -40,6 +41,7 @@ public class AppointmentDto {
 		this.startDateTime = appointment.getStartDateTime();
 		this.endDateTime = appointment.getEndDateTime();
 		this.status = appointment.getStatus();
+		this.treatment = appointment.getTreatment();
 		this.notes = appointment.getNotes();
 		this.active = appointment.getActive();
 	}
@@ -111,6 +113,10 @@ public class AppointmentDto {
 	public String getStatus() {
 		return status;
 	}
+	
+	public String getTreatment() {
+		return treatment;
+	}
 
 	public String getNotes() {
 		return notes;
@@ -162,6 +168,10 @@ public class AppointmentDto {
 
 	public void setStatus(String status) {
 		this.status = status;
+	}
+	
+	public void setTreatment(String treatment) {
+		this.treatment = treatment;
 	}
 
 	public void setNotes(String notes) {

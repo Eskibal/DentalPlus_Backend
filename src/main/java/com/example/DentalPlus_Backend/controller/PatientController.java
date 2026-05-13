@@ -87,16 +87,6 @@ public class PatientController {
 			return ResponseEntity.badRequest().body(e.getMessage());
 		}
 	}
-
-	private Long getAuthenticatedUserId(String authorizationHeader) {
-		String token = jwtService.extractToken(authorizationHeader);
-
-		if (token == null || !jwtService.validateToken(token)) {
-			return null;
-		}
-
-		return jwtService.extractUserId(token);
-	}
 	
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> deletePatient(
@@ -116,5 +106,14 @@ public class PatientController {
 	        return ResponseEntity.badRequest().body(e.getMessage());
 	    }
 	}
-	
+
+	private Long getAuthenticatedUserId(String authorizationHeader) {
+		String token = jwtService.extractToken(authorizationHeader);
+
+		if (token == null || !jwtService.validateToken(token)) {
+			return null;
+		}
+
+		return jwtService.extractUserId(token);
+	}
 }

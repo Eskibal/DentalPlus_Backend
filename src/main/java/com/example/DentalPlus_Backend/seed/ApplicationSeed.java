@@ -316,18 +316,15 @@ public class ApplicationSeed {
 
 		Appointment appointmentOne = persist(new Appointment(boxOne, primaryDentistSeed.dentist(), patientOne,
 				LocalDateTime.of(2026, 5, 1, 10, 0), LocalDateTime.of(2026, 5, 1, 10, 30), "SCHEDULED",
-				"Routine appointment created by ApplicationSeed", true));
+				"Routine checkup", "Routine appointment created by ApplicationSeed", true));
 
 		persist(new Appointment(boxTwo, secondaryDentistSeed.dentist(), patientTwo, LocalDateTime.of(2026, 5, 1, 11, 0),
 				LocalDateTime.of(2026, 5, 1, 11, 30), "SCHEDULED",
-				"Second routine appointment created by ApplicationSeed", true));
+				"Dental cleaning", "Second routine appointment created by ApplicationSeed", true));
 
 		persist(new Appointment(boxOne, primaryDentistSeed.dentist(), patientThree, LocalDateTime.of(2026, 5, 4, 15, 0),
-				LocalDateTime.of(2026, 5, 4, 15, 45), "SCHEDULED", "Follow-up appointment created by ApplicationSeed",
-				true));
-
-		persist(new Treatment("Routine Checkup", "General diagnostic treatment available for demo data", 30, true,
-				"Seed treatment"));
+				LocalDateTime.of(2026, 5, 4, 15, 45), "SCHEDULED",
+				"Follow-up consultation", "Follow-up appointment created by ApplicationSeed", true));
 
 		entityManager.flush();
 
@@ -652,6 +649,11 @@ public class ApplicationSeed {
 		System.out.println("Patient 2 -> no medical alert");
 		System.out.println("Patient 3 -> INFECTION_RISK:HEPATITIS_B");
 		System.out.println("Patient 4 -> no medical alert");
+		System.out.println();
+		System.out.println("Seed appointment treatments:");
+		System.out.println("Appointment 1 -> Routine checkup");
+		System.out.println("Appointment 2 -> Dental cleaning");
+		System.out.println("Appointment 3 -> Follow-up consultation");
 		System.out.println();
 		System.out.println("Seed dental examples:");
 		System.out.println("Patient 1 / Piece 11 / MESIAL   -> CARIES / PENDING");
