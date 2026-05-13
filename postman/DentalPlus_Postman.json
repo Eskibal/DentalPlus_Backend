@@ -404,32 +404,6 @@
               ]
             }
           }
-        },
-        {
-          "name": "Delete Patient",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/patient/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "patient",
-                "1"
-              ]
-            }
-          }
         }
       ]
     },
@@ -620,7 +594,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"startDateTime\": \"2026-05-01T10:00:00\",\n  \"endDateTime\": \"2026-05-01T10:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment created from Postman\",\n  \"active\": true\n}",
+              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"treatment\": \"Dental cleaning\",\n  \"startDateTime\": \"2026-05-01T10:00:00\",\n  \"endDateTime\": \"2026-05-01T10:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment created from Postman\",\n  \"active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -660,7 +634,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"startDateTime\": \"2026-05-01T11:00:00\",\n  \"endDateTime\": \"2026-05-01T11:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment updated from Postman\",\n  \"active\": true\n}",
+              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"treatment\": \"Updated dental treatment\",\n  \"startDateTime\": \"2026-05-01T11:00:00\",\n  \"endDateTime\": \"2026-05-01T11:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment updated from Postman\",\n  \"active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@JsonPropertyOrder({ "id", "box", "dentist", "patient", "startDateTime", "endDateTime", "status", "notes", "active" })
+@JsonPropertyOrder({ "id", "box", "dentist", "patient", "startDateTime", "endDateTime", "status", "treatment",
+	"notes", "active" })
 @Entity
 @Table(name = "appointment")
 public class Appointment {
@@ -35,6 +36,9 @@ public class Appointment {
 	@Column(nullable = false, length = 20)
 	private String status;
 
+	@Column(length = 120)
+	private String treatment;
+
 	@Column(length = 500)
 	private String notes;
 
@@ -45,13 +49,14 @@ public class Appointment {
 	}
 
 	public Appointment(Box box, Dentist dentist, Patient patient, LocalDateTime startDateTime,
-			LocalDateTime endDateTime, String status, String notes, Boolean active) {
+			LocalDateTime endDateTime, String status, String treatment, String notes, Boolean active) {
 		this.box = box;
 		this.dentist = dentist;
 		this.patient = patient;
 		this.startDateTime = startDateTime;
 		this.endDateTime = endDateTime;
 		this.status = normalizeStatus(status);
+		this.treatment = normalizeText(treatment);
 		this.notes = normalizeText(notes);
 		this.active = active != null ? active : true;
 	}
@@ -107,6 +112,14 @@ public class Appointment {
 	public void setStatus(String status) {
 		this.status = normalizeStatus(status);
 	}
+	
+	public String getTreatment() {
+		return treatment;
+	}
+
+	public void setTreatment(String treatment) {
+		this.treatment = normalizeText(treatment);
+	}
 
 	public String getNotes() {
 		return notes;
@@ -145,6 +158,10 @@ public class Appointment {
 
 		return normalized.equals("SCHEDULED") || normalized.equals("COMPLETED") || normalized.equals("CANCELLED");
 	}
+	
+	public static boolean isTreatmentValid(String treatment) {
+		return treatment == null || treatment.isBlank() || treatment.trim().length() <= 120;
+	}
 
 	public static boolean isNotesValid(String notes) {
 		return notes == null || notes.isBlank() || notes.trim().length() <= 500;
@@ -155,6 +172,10 @@ public class Appointment {
 	}
 
 	public static String normalizeText(String text) {
-		return text == null ? null : text.trim();
+		if (text == null || text.isBlank()) {
+			return null;
+		}
+
+		return text.trim();
 	}
 }

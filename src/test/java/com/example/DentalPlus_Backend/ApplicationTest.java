@@ -184,6 +184,11 @@ public class ApplicationTest {
 				() -> assertTrue(Appointment.isStatusValid("COMPLETED")),
 				() -> assertTrue(Appointment.isStatusValid("CANCELLED")),
 				() -> assertFalse(Appointment.isStatusValid("UNKNOWN")),
+				() -> assertTrue(Appointment.isTreatmentValid(null)),
+				() -> assertTrue(Appointment.isTreatmentValid("")),
+				() -> assertTrue(Appointment.isTreatmentValid("Dental cleaning")),
+				() -> assertTrue(Appointment.isTreatmentValid("   Dental cleaning   ")),
+				() -> assertFalse(Appointment.isTreatmentValid("a".repeat(121))),
 				() -> assertTrue(Appointment.isNotesValid("Routine appointment diagnostics")));
 
 		printOk("Appointment validations passed.");
