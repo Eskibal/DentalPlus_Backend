@@ -101,24 +101,27 @@ public class PatientDaoImplHibernate implements PatientDao {
 
 	@Override
 	public List<Patient> findByClinicIdWithSearch(Long clinicId, String search) {
-		if (search == null || search.isBlank()) {
-			return findByClinicId(clinicId);
-		}
+	    if (search == null || search.isBlank()) {
+	        return findActiveByClinicId(clinicId);
+	    }
 
-		String normalizedSearch = "%" + search.trim().toLowerCase() + "%";
+	    String normalizedSearch = "%" + search.trim().toLowerCase() + "%";
 
-		return entityManager.createQuery("""
-				FROM Patient p
-				WHERE p.clinic.id = :clinicId
-				  AND (
-				      LOWER(p.person.name) LIKE :search
-				      OR LOWER(p.person.firstSurname) LIKE :search
-				      OR LOWER(p.person.secondSurname) LIKE :search
-				      OR LOWER(p.person.email) LIKE :search
-				      OR LOWER(p.person.phoneNumber) LIKE :search
-				  )
-				""", Patient.class).setParameter("clinicId", clinicId).setParameter("search", normalizedSearch)
-				.getResultList();
+	    return entityManager.createQuery("""
+	            FROM Patient p
+	            WHERE p.clinic.id = :clinicId
+	              AND p.active = true
+	              AND (
+	                  LOWER(p.person.name) LIKE :search
+	                  OR LOWER(p.person.firstSurname) LIKE :search
+	                  OR LOWER(p.person.secondSurname) LIKE :search
+	                  OR LOWER(p.person.email) LIKE :search
+	                  OR LOWER(p.person.phoneNumber) LIKE :search
+	              )
+	            """, Patient.class)
+	            .setParameter("clinicId", clinicId)
+	            .setParameter("search", normalizedSearch)
+	            .getResultList();
 	}
 
 	@Override

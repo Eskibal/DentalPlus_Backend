@@ -97,4 +97,24 @@ public class PatientController {
 
 		return jwtService.extractUserId(token);
 	}
+	
+	@DeleteMapping("/{id}")
+	public ResponseEntity<?> deletePatient(
+	        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+	        @PathVariable Long id) {
+
+	    Long callerUserId = getAuthenticatedUserId(authorizationHeader);
+
+	    if (callerUserId == null) {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+	    }
+
+	    try {
+	        patientService.deletePatient(id, callerUserId);
+	        return ResponseEntity.noContent().build();
+	    } catch (IllegalArgumentException e) {
+	        return ResponseEntity.badRequest().body(e.getMessage());
+	    }
+	}
+	
 }
