@@ -155,6 +155,19 @@ public class PatientService {
 
 		return getPatientById(patient.getId(), callerUserId);
 	}
+	
+	@Transactional
+	public void deletePatient(Long patientId, Long callerUserId) {
+	    Clinic clinic = resolveCallerClinicOrThrow(callerUserId);
+	    Patient patient = findPatientOrThrow(patientId);
+
+	    if (patient.getClinic() == null || !patient.getClinic().getId().equals(clinic.getId())) {
+	        throw new IllegalArgumentException("Patient not found in caller clinic");
+	    }
+
+	    patient.setActive(false);
+	    patientDao.update(patient);
+	}
 
 	private Patient findPatientOrThrow(Long patientId) {
 		Patient patient = patientDao.findById(patientId);
