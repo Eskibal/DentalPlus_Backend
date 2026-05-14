@@ -1,9 +1,15 @@
 package com.example.DentalPlus_Backend.daoImplHibernate;
 
 import com.example.DentalPlus_Backend.dao.DentalPieceStateDao;
+import com.example.DentalPlus_Backend.model.DentalPiece;
 import com.example.DentalPlus_Backend.model.DentalPieceState;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -22,54 +28,73 @@ public class DentalPieceStateDaoImplHibernate implements DentalPieceStateDao {
 	}
 
 	@Override
+	public List<DentalPieceState> findByDentalPieceId(Long dentalPieceId) {
+		if (dentalPieceId == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalPieceState> cq = cb.createQuery(DentalPieceState.class);
+		Root<DentalPieceState> state = cq.from(DentalPieceState.class);
+
+		Join<DentalPieceState, DentalPiece> dentalPiece = state.join("dentalPiece", JoinType.INNER);
+
+		cq.select(state)
+				.where(cb.equal(dentalPiece.get("id"), dentalPieceId))
+				.orderBy(cb.desc(state.get("id")));
+
+		return entityManager.createQuery(cq).getResultList();
+	}
+
+	@Override
 	public DentalPieceState findActiveByDentalPieceId(Long dentalPieceId) {
 		if (dentalPieceId == null) {
 			return null;
 		}
 
-		List<DentalPieceState> states = entityManager.createQuery("""
-				SELECT dps
-				FROM DentalPieceState dps
-				WHERE dps.dentalPiece.id = :dentalPieceId
-				  AND dps.active = true
-				ORDER BY dps.createdAt DESC
-				""", DentalPieceState.class).setParameter("dentalPieceId", dentalPieceId).setMaxResults(1)
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalPieceState> cq = cb.createQuery(DentalPieceState.class);
+		Root<DentalPieceState> state = cq.from(DentalPieceState.class);
+
+		Join<DentalPieceState, DentalPiece> dentalPiece = state.join("dentalPiece", JoinType.INNER);
+
+		cq.select(state)
+				.where(cb.and(
+						cb.equal(dentalPiece.get("id"), dentalPieceId),
+						cb.isTrue(state.get("active"))
+				))
+				.orderBy(cb.desc(state.get("id")));
+
+		List<DentalPieceState> states = entityManager.createQuery(cq)
+				.setMaxResults(1)
 				.getResultList();
 
 		return states.isEmpty() ? null : states.get(0);
 	}
 
 	@Override
-	public List<DentalPieceState> findByDentalPieceId(Long dentalPieceId) {
-		return entityManager.createQuery("""
-				FROM DentalPieceState dps
-				WHERE dps.dentalPiece.id = :dentalPieceId
-				ORDER BY dps.createdAt DESC
-				""", DentalPieceState.class).setParameter("dentalPieceId", dentalPieceId).getResultList();
-	}
-
-	@Override
 	public List<DentalPieceState> findActiveByOdontogramId(Long odontogramId) {
-		return entityManager.createQuery("""
-				FROM DentalPieceState dps
-				WHERE dps.dentalPiece.odontogram.id = :odontogramId
-				  AND dps.active = true
-				ORDER BY dps.dentalPiece.pieceNumber ASC
-				""", DentalPieceState.class).setParameter("odontogramId", odontogramId).getResultList();
-	}
-
-	@Override
-	public void deactivateActiveByDentalPieceId(Long dentalPieceId) {
-		List<DentalPieceState> activeStates = entityManager.createQuery("""
-				FROM DentalPieceState dps
-				WHERE dps.dentalPiece.id = :dentalPieceId
-				  AND dps.active = true
-				""", DentalPieceState.class).setParameter("dentalPieceId", dentalPieceId).getResultList();
-
-		for (DentalPieceState state : activeStates) {
-			state.setActive(false);
-			entityManager.merge(state);
+		if (odontogramId == null) {
+			return List.of();
 		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalPieceState> cq = cb.createQuery(DentalPieceState.class);
+		Root<DentalPieceState> state = cq.from(DentalPieceState.class);
+
+		Join<DentalPieceState, DentalPiece> dentalPiece = state.join("dentalPiece", JoinType.INNER);
+
+		cq.select(state)
+				.where(cb.and(
+						cb.equal(dentalPiece.get("odontogram").get("id"), odontogramId),
+						cb.isTrue(state.get("active"))
+				))
+				.orderBy(
+						cb.asc(dentalPiece.get("pieceNumber")),
+						cb.desc(state.get("id"))
+				);
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
@@ -84,7 +109,14 @@ public class DentalPieceStateDaoImplHibernate implements DentalPieceStateDao {
 
 	@Override
 	public void delete(DentalPieceState dentalPieceState) {
-		entityManager.remove(
-				entityManager.contains(dentalPieceState) ? dentalPieceState : entityManager.merge(dentalPieceState));
+		entityManager.remove(entityManager.contains(dentalPieceState)
+				? dentalPieceState
+				: entityManager.merge(dentalPieceState));
+	}
+
+	@Override
+	public void deactivateActiveByDentalPieceId(Long dentalPieceId) {
+		// TODO Auto-generated method stub
+		
 	}
 }

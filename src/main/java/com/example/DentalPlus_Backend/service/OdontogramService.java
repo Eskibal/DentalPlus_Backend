@@ -33,7 +33,10 @@ import com.example.DentalPlus_Backend.model.Receptionist;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class OdontogramService {
@@ -163,27 +166,55 @@ public class OdontogramService {
 	}
 
 	private OdontogramDto buildOdontogramDto(Odontogram odontogram) {
-		List<DentalPieceDto> pieces = dentalPieceDao.findByOdontogramId(odontogram.getId()).stream()
-				.map(this::buildDentalPieceDto).toList();
+		Long odontogramId = odontogram.getId();
 
-		List<DentalBridgeDto> bridges = dentalBridgeDao.findActiveByOdontogramId(odontogram.getId()).stream()
-				.map(this::buildDentalBridgeDto).toList();
+		List<DentalPiece> dentalPieces = dentalPieceDao.findByOdontogramId(odontogramId);
+		List<DentalSurface> dentalSurfaces = dentalSurfaceDao.findByOdontogramId(odontogramId);
+		List<DentalPieceState> activeStates = dentalPieceStateDao.findActiveByOdontogramId(odontogramId);
+		List<DentalSurfaceMark> activeMarks = dentalSurfaceMarkDao.findActiveByOdontogramId(odontogramId);
+
+		Map<Long, DentalPieceState> activeStateByPieceId = activeStates.stream()
+				.filter(state -> state.getDentalPiece() != null && state.getDentalPiece().getId() != null)
+				.collect(Collectors.toMap(state -> state.getDentalPiece().getId(), state -> state,
+						(existing, replacement) -> existing));
+
+		Map<Long, List<DentalSurface>> surfacesByPieceId = dentalSurfaces.stream()
+				.filter(surface -> surface.getDentalPiece() != null && surface.getDentalPiece().getId() != null)
+				.collect(Collectors.groupingBy(surface -> surface.getDentalPiece().getId()));
+
+		Map<Long, DentalSurfaceMark> activeMarkBySurfaceId = activeMarks.stream()
+				.filter(mark -> mark.getDentalSurface() != null && mark.getDentalSurface().getId() != null)
+				.collect(Collectors.toMap(mark -> mark.getDentalSurface().getId(), mark -> mark,
+						(existing, replacement) -> existing));
+
+		List<DentalPieceDto> pieces = dentalPieces.stream()
+				.map(dentalPiece -> buildDentalPieceDto(dentalPiece, activeStateByPieceId, surfacesByPieceId,
+						activeMarkBySurfaceId))
+				.toList();
+
+		List<DentalBridgeDto> bridges = dentalBridgeDao.findActiveByOdontogramId(odontogramId).stream()
+				.map(this::buildDentalBridgeDto)
+				.toList();
 
 		return new OdontogramDto(odontogram, pieces, bridges);
 	}
 
-	private DentalPieceDto buildDentalPieceDto(DentalPiece dentalPiece) {
-		DentalPieceState activeState = dentalPieceStateDao.findActiveByDentalPieceId(dentalPiece.getId());
+	private DentalPieceDto buildDentalPieceDto(DentalPiece dentalPiece, Map<Long, DentalPieceState> activeStateByPieceId,
+			Map<Long, List<DentalSurface>> surfacesByPieceId, Map<Long, DentalSurfaceMark> activeMarkBySurfaceId) {
+		DentalPieceState activeState = activeStateByPieceId.get(dentalPiece.getId());
 
-		List<DentalSurfaceDto> surfaces = dentalSurfaceDao.findByDentalPieceId(dentalPiece.getId()).stream()
-				.map(this::buildDentalSurfaceDto).toList();
+		List<DentalSurfaceDto> surfaces = surfacesByPieceId.getOrDefault(dentalPiece.getId(), Collections.emptyList())
+				.stream()
+				.map(surface -> buildDentalSurfaceDto(surface, activeMarkBySurfaceId))
+				.toList();
 
 		return new DentalPieceDto(dentalPiece, activeState == null ? null : new DentalPieceStateDto(activeState),
 				surfaces);
 	}
 
-	private DentalSurfaceDto buildDentalSurfaceDto(DentalSurface dentalSurface) {
-		DentalSurfaceMark activeMark = dentalSurfaceMarkDao.findActiveByDentalSurfaceId(dentalSurface.getId());
+	private DentalSurfaceDto buildDentalSurfaceDto(DentalSurface dentalSurface,
+			Map<Long, DentalSurfaceMark> activeMarkBySurfaceId) {
+		DentalSurfaceMark activeMark = activeMarkBySurfaceId.get(dentalSurface.getId());
 
 		return new DentalSurfaceDto(dentalSurface, activeMark == null ? null : new DentalSurfaceMarkDto(activeMark));
 	}

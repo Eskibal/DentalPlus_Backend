@@ -1,9 +1,16 @@
 package com.example.DentalPlus_Backend.daoImplHibernate;
 
 import com.example.DentalPlus_Backend.dao.DentalSurfaceMarkDao;
+import com.example.DentalPlus_Backend.model.DentalPiece;
+import com.example.DentalPlus_Backend.model.DentalSurface;
 import com.example.DentalPlus_Backend.model.DentalSurfaceMark;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -22,53 +29,75 @@ public class DentalSurfaceMarkDaoImplHibernate implements DentalSurfaceMarkDao {
 	}
 
 	@Override
+	public List<DentalSurfaceMark> findByDentalSurfaceId(Long dentalSurfaceId) {
+		if (dentalSurfaceId == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalSurfaceMark> cq = cb.createQuery(DentalSurfaceMark.class);
+		Root<DentalSurfaceMark> mark = cq.from(DentalSurfaceMark.class);
+
+		Join<DentalSurfaceMark, DentalSurface> surface = mark.join("dentalSurface", JoinType.INNER);
+
+		cq.select(mark)
+				.where(cb.equal(surface.get("id"), dentalSurfaceId))
+				.orderBy(cb.desc(mark.get("id")));
+
+		return entityManager.createQuery(cq).getResultList();
+	}
+
+	@Override
 	public DentalSurfaceMark findActiveByDentalSurfaceId(Long dentalSurfaceId) {
 		if (dentalSurfaceId == null) {
 			return null;
 		}
-		List<DentalSurfaceMark> marks = entityManager.createQuery("""
-				SELECT dsm
-				FROM DentalSurfaceMark dsm
-				WHERE dsm.dentalSurface.id = :dentalSurfaceId
-				  AND dsm.active = true
-				ORDER BY dsm.createdAt DESC
-				""", DentalSurfaceMark.class).setParameter("dentalSurfaceId", dentalSurfaceId).setMaxResults(1)
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalSurfaceMark> cq = cb.createQuery(DentalSurfaceMark.class);
+		Root<DentalSurfaceMark> mark = cq.from(DentalSurfaceMark.class);
+
+		Join<DentalSurfaceMark, DentalSurface> surface = mark.join("dentalSurface", JoinType.INNER);
+
+		cq.select(mark)
+				.where(cb.and(
+						cb.equal(surface.get("id"), dentalSurfaceId),
+						cb.isTrue(mark.get("active"))
+				))
+				.orderBy(cb.desc(mark.get("id")));
+
+		List<DentalSurfaceMark> marks = entityManager.createQuery(cq)
+				.setMaxResults(1)
 				.getResultList();
+
 		return marks.isEmpty() ? null : marks.get(0);
 	}
 
 	@Override
-	public List<DentalSurfaceMark> findByDentalSurfaceId(Long dentalSurfaceId) {
-		return entityManager.createQuery("""
-				FROM DentalSurfaceMark sm
-				WHERE sm.dentalSurface.id = :dentalSurfaceId
-				ORDER BY sm.createdAt DESC
-				""", DentalSurfaceMark.class).setParameter("dentalSurfaceId", dentalSurfaceId).getResultList();
-	}
-
-	@Override
 	public List<DentalSurfaceMark> findActiveByOdontogramId(Long odontogramId) {
-		return entityManager.createQuery("""
-				FROM DentalSurfaceMark sm
-				WHERE sm.dentalSurface.dentalPiece.odontogram.id = :odontogramId
-				  AND sm.active = true
-				ORDER BY sm.dentalSurface.dentalPiece.pieceNumber ASC,
-				         sm.dentalSurface.surfaceType ASC
-				""", DentalSurfaceMark.class).setParameter("odontogramId", odontogramId).getResultList();
-	}
-
-	@Override
-	public void deactivateActiveByDentalSurfaceId(Long dentalSurfaceId) {
-		List<DentalSurfaceMark> activeMarks = entityManager.createQuery("""
-				FROM DentalSurfaceMark sm
-				WHERE sm.dentalSurface.id = :dentalSurfaceId
-				  AND sm.active = true
-				""", DentalSurfaceMark.class).setParameter("dentalSurfaceId", dentalSurfaceId).getResultList();
-
-		for (DentalSurfaceMark mark : activeMarks) {
-			mark.setActive(false);
-			entityManager.merge(mark);
+		if (odontogramId == null) {
+			return List.of();
 		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalSurfaceMark> cq = cb.createQuery(DentalSurfaceMark.class);
+		Root<DentalSurfaceMark> mark = cq.from(DentalSurfaceMark.class);
+
+		Join<DentalSurfaceMark, DentalSurface> surface = mark.join("dentalSurface", JoinType.INNER);
+		Join<DentalSurface, DentalPiece> dentalPiece = surface.join("dentalPiece", JoinType.INNER);
+
+		cq.select(mark)
+				.where(cb.and(
+						cb.equal(dentalPiece.get("odontogram").get("id"), odontogramId),
+						cb.isTrue(mark.get("active"))
+				))
+				.orderBy(
+						cb.asc(dentalPiece.get("pieceNumber")),
+						cb.asc(surface.get("surfaceType")),
+						cb.desc(mark.get("id"))
+				);
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
@@ -83,7 +112,14 @@ public class DentalSurfaceMarkDaoImplHibernate implements DentalSurfaceMarkDao {
 
 	@Override
 	public void delete(DentalSurfaceMark dentalSurfaceMark) {
-		entityManager.remove(
-				entityManager.contains(dentalSurfaceMark) ? dentalSurfaceMark : entityManager.merge(dentalSurfaceMark));
+		entityManager.remove(entityManager.contains(dentalSurfaceMark)
+				? dentalSurfaceMark
+				: entityManager.merge(dentalSurfaceMark));
+	}
+
+	@Override
+	public void deactivateActiveByDentalSurfaceId(Long dentalSurfaceId) {
+		// TODO Auto-generated method stub
+		
 	}
 }

@@ -5,19 +5,33 @@ import com.example.DentalPlus_Backend.model.Admin;
 import com.example.DentalPlus_Backend.model.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 @Repository
 @Profile("hibernate")
 public class AdminDaoImplHibernate implements AdminDao {
+
 	@PersistenceContext
 	private EntityManager entityManager;
 
 	@Override
 	public Admin findById(Long id) {
-		return entityManager.find(Admin.class, id);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Admin> cq = cb.createQuery(Admin.class);
+		Root<Admin> admin = cq.from(Admin.class);
+
+		fetchAdminRelations(admin);
+
+		cq.select(admin).distinct(true).where(cb.equal(admin.get("id"), id));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
@@ -25,10 +39,17 @@ public class AdminDaoImplHibernate implements AdminDao {
 		if (userId == null) {
 			return null;
 		}
-		List<Admin> admins = entityManager.createQuery("""
-				FROM Admin a
-				WHERE a.user.id = :userId
-				""", Admin.class).setParameter("userId", userId).setMaxResults(1).getResultList();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Admin> cq = cb.createQuery(Admin.class);
+		Root<Admin> admin = cq.from(Admin.class);
+
+		fetchAdminRelations(admin);
+
+		cq.select(admin).distinct(true).where(cb.equal(admin.get("user").get("id"), userId));
+
+		List<Admin> admins = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
 		return admins.isEmpty() ? null : admins.get(0);
 	}
 
@@ -37,10 +58,17 @@ public class AdminDaoImplHibernate implements AdminDao {
 		if (personId == null) {
 			return null;
 		}
-		List<Admin> admins = entityManager.createQuery("""
-				FROM Admin a
-				WHERE a.person.id = :personId
-				""", Admin.class).setParameter("personId", personId).setMaxResults(1).getResultList();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Admin> cq = cb.createQuery(Admin.class);
+		Root<Admin> admin = cq.from(Admin.class);
+
+		fetchAdminRelations(admin);
+
+		cq.select(admin).distinct(true).where(cb.equal(admin.get("person").get("id"), personId));
+
+		List<Admin> admins = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
 		return admins.isEmpty() ? null : admins.get(0);
 	}
 
@@ -49,11 +77,16 @@ public class AdminDaoImplHibernate implements AdminDao {
 		if (email == null || email.isBlank()) {
 			return null;
 		}
-		List<User> users = entityManager.createQuery("""
-				SELECT a.user
-				FROM Admin a
-				WHERE LOWER(a.person.email) = :email
-				""", User.class).setParameter("email", email.trim().toLowerCase()).setMaxResults(1).getResultList();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<User> cq = cb.createQuery(User.class);
+		Root<Admin> admin = cq.from(Admin.class);
+
+		cq.select(admin.get("user"))
+				.where(cb.equal(cb.lower(admin.get("person").get("email")), email.trim().toLowerCase()));
+
+		List<User> users = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
 		return users.isEmpty() ? null : users.get(0);
 	}
 
@@ -62,28 +95,51 @@ public class AdminDaoImplHibernate implements AdminDao {
 		if (userId == null) {
 			return false;
 		}
-		Long count = entityManager.createQuery("SELECT COUNT(a) FROM Admin a WHERE a.user.id = :userId", Long.class)
-				.setParameter("userId", userId).getSingleResult();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+		Root<Admin> admin = cq.from(Admin.class);
+
+		cq.select(cb.count(admin)).where(cb.equal(admin.get("user").get("id"), userId));
+
+		Long count = entityManager.createQuery(cq).getSingleResult();
+
 		return count != null && count > 0;
 	}
 
 	@Override
 	public List<Admin> findByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Admin a
-				WHERE a.clinic.id = :clinicId
-				ORDER BY a.person.name ASC, a.person.firstSurname ASC
-				""", Admin.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Admin> cq = cb.createQuery(Admin.class);
+		Root<Admin> admin = cq.from(Admin.class);
+
+		fetchAdminRelations(admin);
+
+		cq.select(admin)
+				.distinct(true)
+				.where(cb.equal(admin.get("clinic").get("id"), clinicId))
+				.orderBy(cb.asc(admin.get("person").get("name")),
+						cb.asc(admin.get("person").get("firstSurname")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Admin> findActiveByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Admin a
-				WHERE a.clinic.id = :clinicId
-				  AND a.active = true
-				ORDER BY a.person.name ASC, a.person.firstSurname ASC
-				""", Admin.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Admin> cq = cb.createQuery(Admin.class);
+		Root<Admin> admin = cq.from(Admin.class);
+
+		fetchAdminRelations(admin);
+
+		cq.select(admin)
+				.distinct(true)
+				.where(cb.and(cb.equal(admin.get("clinic").get("id"), clinicId),
+						cb.isTrue(admin.get("active"))))
+				.orderBy(cb.asc(admin.get("person").get("name")),
+						cb.asc(admin.get("person").get("firstSurname")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
@@ -99,5 +155,11 @@ public class AdminDaoImplHibernate implements AdminDao {
 	@Override
 	public void delete(Admin admin) {
 		entityManager.remove(entityManager.contains(admin) ? admin : entityManager.merge(admin));
+	}
+
+	private void fetchAdminRelations(Root<Admin> admin) {
+		admin.fetch("person", JoinType.LEFT);
+		admin.fetch("user", JoinType.LEFT);
+		admin.fetch("clinic", JoinType.LEFT);
 	}
 }

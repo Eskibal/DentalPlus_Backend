@@ -4,6 +4,9 @@ import com.example.DentalPlus_Backend.dao.ProductDao;
 import com.example.DentalPlus_Backend.model.Product;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -27,28 +30,39 @@ public class ProductDaoImplHibernate implements ProductDao {
 			return null;
 		}
 
-		return entityManager.createQuery("""
-				FROM Product p
-				WHERE LOWER(p.name) = :name
-				""", Product.class).setParameter("name", name.trim().toLowerCase()).getResultStream().findFirst()
-				.orElse(null);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Product> cq = cb.createQuery(Product.class);
+		Root<Product> product = cq.from(Product.class);
+
+		cq.select(product)
+				.where(cb.equal(cb.lower(product.get("name")), name.trim().toLowerCase()));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
 	public List<Product> findAll() {
-		return entityManager.createQuery("""
-				FROM Product p
-				ORDER BY p.name ASC
-				""", Product.class).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Product> cq = cb.createQuery(Product.class);
+		Root<Product> product = cq.from(Product.class);
+
+		cq.select(product)
+				.orderBy(cb.asc(product.get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Product> findActive() {
-		return entityManager.createQuery("""
-				FROM Product p
-				WHERE p.active = true
-				ORDER BY p.name ASC
-				""", Product.class).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Product> cq = cb.createQuery(Product.class);
+		Root<Product> product = cq.from(Product.class);
+
+		cq.select(product)
+				.where(cb.isTrue(product.get("active")))
+				.orderBy(cb.asc(product.get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override

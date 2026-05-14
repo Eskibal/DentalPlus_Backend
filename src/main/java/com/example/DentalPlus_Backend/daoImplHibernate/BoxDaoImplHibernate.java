@@ -4,6 +4,10 @@ import com.example.DentalPlus_Backend.dao.BoxDao;
 import com.example.DentalPlus_Backend.model.Box;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -18,23 +22,50 @@ public class BoxDaoImplHibernate implements BoxDao {
 
 	@Override
 	public Box findById(Long id) {
-		return entityManager.find(Box.class, id);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Box> cq = cb.createQuery(Box.class);
+		Root<Box> box = cq.from(Box.class);
+
+		box.fetch("clinic", JoinType.LEFT);
+
+		cq.select(box)
+				.distinct(true)
+				.where(cb.equal(box.get("id"), id));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
 	public List<Box> findByClinicId(Long clinicId) {
-		return entityManager.createQuery("FROM Box b WHERE b.clinic.id = :clinicId", Box.class)
-				.setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Box> cq = cb.createQuery(Box.class);
+		Root<Box> box = cq.from(Box.class);
+
+		box.fetch("clinic", JoinType.LEFT);
+
+		cq.select(box)
+				.distinct(true)
+				.where(cb.equal(box.get("clinic").get("id"), clinicId));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Box> findActiveByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Box b
-				WHERE b.clinic.id = :clinicId
-				  AND b.active = true
-				ORDER BY b.name ASC
-				""", Box.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Box> cq = cb.createQuery(Box.class);
+		Root<Box> box = cq.from(Box.class);
+
+		box.fetch("clinic", JoinType.LEFT);
+
+		cq.select(box)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(box.get("clinic").get("id"), clinicId),
+						cb.isTrue(box.get("active"))))
+				.orderBy(cb.asc(box.get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override

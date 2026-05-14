@@ -5,19 +5,35 @@ import com.example.DentalPlus_Backend.model.Receptionist;
 import com.example.DentalPlus_Backend.model.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 @Repository
 @Profile("hibernate")
 public class ReceptionistDaoImplHibernate implements ReceptionistDao {
+
 	@PersistenceContext
 	private EntityManager entityManager;
 
 	@Override
 	public Receptionist findById(Long id) {
-		return entityManager.find(Receptionist.class, id);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Receptionist> cq = cb.createQuery(Receptionist.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		fetchReceptionistRelations(receptionist);
+
+		cq.select(receptionist)
+				.distinct(true)
+				.where(cb.equal(receptionist.get("id"), id));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
@@ -25,9 +41,19 @@ public class ReceptionistDaoImplHibernate implements ReceptionistDao {
 		if (userId == null) {
 			return null;
 		}
-		List<Receptionist> receptionists = entityManager
-				.createQuery("FROM Receptionist r WHERE r.user.id = :userId", Receptionist.class)
-				.setParameter("userId", userId).setMaxResults(1).getResultList();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Receptionist> cq = cb.createQuery(Receptionist.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		fetchReceptionistRelations(receptionist);
+
+		cq.select(receptionist)
+				.distinct(true)
+				.where(cb.equal(receptionist.get("user").get("id"), userId));
+
+		List<Receptionist> receptionists = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
 		return receptionists.isEmpty() ? null : receptionists.get(0);
 	}
 
@@ -36,9 +62,19 @@ public class ReceptionistDaoImplHibernate implements ReceptionistDao {
 		if (personId == null) {
 			return null;
 		}
-		List<Receptionist> receptionists = entityManager
-				.createQuery("FROM Receptionist r WHERE r.person.id = :personId", Receptionist.class)
-				.setParameter("personId", personId).setMaxResults(1).getResultList();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Receptionist> cq = cb.createQuery(Receptionist.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		fetchReceptionistRelations(receptionist);
+
+		cq.select(receptionist)
+				.distinct(true)
+				.where(cb.equal(receptionist.get("person").get("id"), personId));
+
+		List<Receptionist> receptionists = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
 		return receptionists.isEmpty() ? null : receptionists.get(0);
 	}
 
@@ -47,11 +83,16 @@ public class ReceptionistDaoImplHibernate implements ReceptionistDao {
 		if (email == null || email.isBlank()) {
 			return null;
 		}
-		List<User> users = entityManager.createQuery("""
-				SELECT r.user
-				FROM Receptionist r
-				WHERE LOWER(r.person.email) = :email
-				""", User.class).setParameter("email", email.trim().toLowerCase()).setMaxResults(1).getResultList();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<User> cq = cb.createQuery(User.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		cq.select(receptionist.get("user"))
+				.where(cb.equal(cb.lower(receptionist.get("person").get("email")), email.trim().toLowerCase()));
+
+		List<User> users = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
 		return users.isEmpty() ? null : users.get(0);
 	}
 
@@ -60,29 +101,55 @@ public class ReceptionistDaoImplHibernate implements ReceptionistDao {
 		if (userId == null) {
 			return false;
 		}
-		Long count = entityManager
-				.createQuery("SELECT COUNT(r) FROM Receptionist r WHERE r.user.id = :userId", Long.class)
-				.setParameter("userId", userId).getSingleResult();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		cq.select(cb.count(receptionist))
+				.where(cb.equal(receptionist.get("user").get("id"), userId));
+
+		Long count = entityManager.createQuery(cq).getSingleResult();
+
 		return count != null && count > 0;
 	}
 
 	@Override
 	public List<Receptionist> findByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Receptionist r
-				WHERE r.clinic.id = :clinicId
-				ORDER BY r.person.name ASC, r.person.firstSurname ASC
-				""", Receptionist.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Receptionist> cq = cb.createQuery(Receptionist.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		fetchReceptionistRelations(receptionist);
+
+		cq.select(receptionist)
+				.distinct(true)
+				.where(cb.equal(receptionist.get("clinic").get("id"), clinicId))
+				.orderBy(
+						cb.asc(receptionist.get("person").get("name")),
+						cb.asc(receptionist.get("person").get("firstSurname")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Receptionist> findActiveByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Receptionist r
-				WHERE r.clinic.id = :clinicId
-				  AND r.active = true
-				ORDER BY r.person.name ASC, r.person.firstSurname ASC
-				""", Receptionist.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Receptionist> cq = cb.createQuery(Receptionist.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		fetchReceptionistRelations(receptionist);
+
+		cq.select(receptionist)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(receptionist.get("clinic").get("id"), clinicId),
+						cb.isTrue(receptionist.get("active"))))
+				.orderBy(
+						cb.asc(receptionist.get("person").get("name")),
+						cb.asc(receptionist.get("person").get("firstSurname")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
@@ -98,5 +165,12 @@ public class ReceptionistDaoImplHibernate implements ReceptionistDao {
 	@Override
 	public void delete(Receptionist receptionist) {
 		entityManager.remove(entityManager.contains(receptionist) ? receptionist : entityManager.merge(receptionist));
+	}
+
+	private void fetchReceptionistRelations(Root<Receptionist> receptionist) {
+		receptionist.fetch("person", JoinType.LEFT);
+		receptionist.fetch("user", JoinType.LEFT);
+		receptionist.fetch("clinic", JoinType.LEFT);
+		receptionist.fetch("calendarRule", JoinType.LEFT);
 	}
 }
