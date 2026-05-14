@@ -4,6 +4,10 @@ import com.example.DentalPlus_Backend.dao.DentalPieceDao;
 import com.example.DentalPlus_Backend.model.DentalPiece;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -18,7 +22,17 @@ public class DentalPieceDaoImplHibernate implements DentalPieceDao {
 
 	@Override
 	public DentalPiece findById(Long id) {
-		return entityManager.find(DentalPiece.class, id);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalPiece> cq = cb.createQuery(DentalPiece.class);
+		Root<DentalPiece> dentalPiece = cq.from(DentalPiece.class);
+
+		dentalPiece.fetch("odontogram", JoinType.LEFT);
+
+		cq.select(dentalPiece)
+				.distinct(true)
+				.where(cb.equal(dentalPiece.get("id"), id));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
@@ -27,21 +41,35 @@ public class DentalPieceDaoImplHibernate implements DentalPieceDao {
 			return null;
 		}
 
-		return entityManager.createQuery("""
-				FROM DentalPiece dp
-				WHERE dp.odontogram.id = :odontogramId
-				  AND dp.pieceNumber = :pieceNumber
-				""", DentalPiece.class).setParameter("odontogramId", odontogramId)
-				.setParameter("pieceNumber", pieceNumber).getResultStream().findFirst().orElse(null);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalPiece> cq = cb.createQuery(DentalPiece.class);
+		Root<DentalPiece> dentalPiece = cq.from(DentalPiece.class);
+
+		dentalPiece.fetch("odontogram", JoinType.LEFT);
+
+		cq.select(dentalPiece)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(dentalPiece.get("odontogram").get("id"), odontogramId),
+						cb.equal(dentalPiece.get("pieceNumber"), pieceNumber)));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
 	public List<DentalPiece> findByOdontogramId(Long odontogramId) {
-		return entityManager.createQuery("""
-				FROM DentalPiece dp
-				WHERE dp.odontogram.id = :odontogramId
-				ORDER BY dp.pieceNumber ASC
-				""", DentalPiece.class).setParameter("odontogramId", odontogramId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalPiece> cq = cb.createQuery(DentalPiece.class);
+		Root<DentalPiece> dentalPiece = cq.from(DentalPiece.class);
+
+		dentalPiece.fetch("odontogram", JoinType.LEFT);
+
+		cq.select(dentalPiece)
+				.distinct(true)
+				.where(cb.equal(dentalPiece.get("odontogram").get("id"), odontogramId))
+				.orderBy(cb.asc(dentalPiece.get("pieceNumber")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override

@@ -4,6 +4,10 @@ import com.example.DentalPlus_Backend.dao.CalendarBreakDao;
 import com.example.DentalPlus_Backend.model.CalendarBreak;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -18,29 +22,56 @@ public class CalendarBreakDaoImplHibernate implements CalendarBreakDao {
 
 	@Override
 	public CalendarBreak findById(Long id) {
-		return entityManager.find(CalendarBreak.class, id);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarBreak> cq = cb.createQuery(CalendarBreak.class);
+		Root<CalendarBreak> calendarBreak = cq.from(CalendarBreak.class);
+
+		calendarBreak.fetch("calendarRule", JoinType.LEFT);
+
+		cq.select(calendarBreak)
+				.distinct(true)
+				.where(cb.equal(calendarBreak.get("id"), id));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
 	public List<CalendarBreak> findActiveByCalendarRuleId(Long calendarRuleId) {
-		return entityManager.createQuery("""
-				FROM CalendarBreak cb
-				WHERE cb.calendarRule.id = :calendarRuleId
-				  AND cb.active = true
-				ORDER BY cb.dayOfWeek ASC, cb.breakStartTime ASC
-				""", CalendarBreak.class).setParameter("calendarRuleId", calendarRuleId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarBreak> cq = cb.createQuery(CalendarBreak.class);
+		Root<CalendarBreak> calendarBreak = cq.from(CalendarBreak.class);
+
+		calendarBreak.fetch("calendarRule", JoinType.LEFT);
+
+		cq.select(calendarBreak)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(calendarBreak.get("calendarRule").get("id"), calendarRuleId),
+						cb.isTrue(calendarBreak.get("active"))))
+				.orderBy(
+						cb.asc(calendarBreak.get("dayOfWeek")),
+						cb.asc(calendarBreak.get("breakStartTime")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<CalendarBreak> findActiveByCalendarRuleIdAndDayOfWeek(Long calendarRuleId, String dayOfWeek) {
-		return entityManager.createQuery("""
-				FROM CalendarBreak cb
-				WHERE cb.calendarRule.id = :calendarRuleId
-				  AND cb.dayOfWeek = :dayOfWeek
-				  AND cb.active = true
-				ORDER BY cb.breakStartTime ASC
-				""", CalendarBreak.class).setParameter("calendarRuleId", calendarRuleId)
-				.setParameter("dayOfWeek", CalendarBreak.normalizeDayOfWeek(dayOfWeek)).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarBreak> cq = cb.createQuery(CalendarBreak.class);
+		Root<CalendarBreak> calendarBreak = cq.from(CalendarBreak.class);
+
+		calendarBreak.fetch("calendarRule", JoinType.LEFT);
+
+		cq.select(calendarBreak)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(calendarBreak.get("calendarRule").get("id"), calendarRuleId),
+						cb.equal(calendarBreak.get("dayOfWeek"), CalendarBreak.normalizeDayOfWeek(dayOfWeek)),
+						cb.isTrue(calendarBreak.get("active"))))
+				.orderBy(cb.asc(calendarBreak.get("breakStartTime")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override

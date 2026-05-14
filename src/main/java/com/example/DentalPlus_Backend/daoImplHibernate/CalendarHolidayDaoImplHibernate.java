@@ -4,6 +4,10 @@ import com.example.DentalPlus_Backend.dao.CalendarHolidayDao;
 import com.example.DentalPlus_Backend.model.CalendarHoliday;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -19,30 +23,55 @@ public class CalendarHolidayDaoImplHibernate implements CalendarHolidayDao {
 
 	@Override
 	public CalendarHoliday findById(Long id) {
-		return entityManager.find(CalendarHoliday.class, id);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarHoliday> cq = cb.createQuery(CalendarHoliday.class);
+		Root<CalendarHoliday> calendarHoliday = cq.from(CalendarHoliday.class);
+
+		calendarHoliday.fetch("calendarRule", JoinType.LEFT);
+
+		cq.select(calendarHoliday)
+				.distinct(true)
+				.where(cb.equal(calendarHoliday.get("id"), id));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
 	public List<CalendarHoliday> findActiveByCalendarRuleId(Long calendarRuleId) {
-		return entityManager.createQuery("""
-				FROM CalendarHoliday ch
-				WHERE ch.calendarRule.id = :calendarRuleId
-				  AND ch.active = true
-				ORDER BY ch.startDate ASC
-				""", CalendarHoliday.class).setParameter("calendarRuleId", calendarRuleId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarHoliday> cq = cb.createQuery(CalendarHoliday.class);
+		Root<CalendarHoliday> calendarHoliday = cq.from(CalendarHoliday.class);
+
+		calendarHoliday.fetch("calendarRule", JoinType.LEFT);
+
+		cq.select(calendarHoliday)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(calendarHoliday.get("calendarRule").get("id"), calendarRuleId),
+						cb.isTrue(calendarHoliday.get("active"))))
+				.orderBy(cb.asc(calendarHoliday.get("startDate")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<CalendarHoliday> findActiveByCalendarRuleIdAndDate(Long calendarRuleId, LocalDate date) {
-		return entityManager.createQuery("""
-				FROM CalendarHoliday ch
-				WHERE ch.calendarRule.id = :calendarRuleId
-				  AND ch.active = true
-				  AND ch.startDate <= :date
-				  AND ch.endDate >= :date
-				ORDER BY ch.startDate ASC
-				""", CalendarHoliday.class).setParameter("calendarRuleId", calendarRuleId).setParameter("date", date)
-				.getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarHoliday> cq = cb.createQuery(CalendarHoliday.class);
+		Root<CalendarHoliday> calendarHoliday = cq.from(CalendarHoliday.class);
+
+		calendarHoliday.fetch("calendarRule", JoinType.LEFT);
+
+		cq.select(calendarHoliday)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(calendarHoliday.get("calendarRule").get("id"), calendarRuleId),
+						cb.isTrue(calendarHoliday.get("active")),
+						cb.lessThanOrEqualTo(calendarHoliday.get("startDate"), date),
+						cb.greaterThanOrEqualTo(calendarHoliday.get("endDate"), date)))
+				.orderBy(cb.asc(calendarHoliday.get("startDate")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override

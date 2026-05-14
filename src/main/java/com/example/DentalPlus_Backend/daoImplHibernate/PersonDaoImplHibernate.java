@@ -4,13 +4,18 @@ import com.example.DentalPlus_Backend.dao.PersonDao;
 import com.example.DentalPlus_Backend.model.Person;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 @Repository
 @Profile("hibernate")
 public class PersonDaoImplHibernate implements PersonDao {
+
 	@PersistenceContext
 	private EntityManager entityManager;
 
@@ -24,16 +29,28 @@ public class PersonDaoImplHibernate implements PersonDao {
 		if (email == null || email.isBlank()) {
 			return null;
 		}
-		List<Person> persons = entityManager.createQuery("""
-				FROM Person p
-				WHERE LOWER(p.email) = :email
-				""", Person.class).setParameter("email", email.trim().toLowerCase()).setMaxResults(1).getResultList();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Person> cq = cb.createQuery(Person.class);
+		Root<Person> person = cq.from(Person.class);
+
+		cq.select(person)
+				.where(cb.equal(cb.lower(person.get("email")), email.trim().toLowerCase()));
+
+		List<Person> persons = entityManager.createQuery(cq).setMaxResults(1).getResultList();
+
 		return persons.isEmpty() ? null : persons.get(0);
 	}
 
 	@Override
 	public List<Person> findAll() {
-		return entityManager.createQuery("FROM Person", Person.class).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Person> cq = cb.createQuery(Person.class);
+		Root<Person> person = cq.from(Person.class);
+
+		cq.select(person);
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override

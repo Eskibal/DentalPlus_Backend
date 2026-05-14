@@ -4,6 +4,11 @@ import com.example.DentalPlus_Backend.dao.InventoryDao;
 import com.example.DentalPlus_Backend.model.Inventory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Fetch;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -18,7 +23,17 @@ public class InventoryDaoImplHibernate implements InventoryDao {
 
 	@Override
 	public Inventory findById(Long id) {
-		return entityManager.find(Inventory.class, id);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.equal(inventory.get("id"), id));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
@@ -27,78 +42,137 @@ public class InventoryDaoImplHibernate implements InventoryDao {
 			return null;
 		}
 
-		return entityManager.createQuery("""
-				FROM Inventory i
-				WHERE i.box.id = :boxId
-				  AND i.product.id = :productId
-				""", Inventory.class).setParameter("boxId", boxId).setParameter("productId", productId)
-				.getResultStream().findFirst().orElse(null);
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(inventory.get("box").get("id"), boxId),
+						cb.equal(inventory.get("product").get("id"), productId)));
+
+		return entityManager.createQuery(cq).getResultStream().findFirst().orElse(null);
 	}
 
 	@Override
 	public List<Inventory> findByBoxId(Long boxId) {
-		return entityManager.createQuery("""
-				FROM Inventory i
-				WHERE i.box.id = :boxId
-				ORDER BY i.product.name ASC
-				""", Inventory.class).setParameter("boxId", boxId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.equal(inventory.get("box").get("id"), boxId))
+				.orderBy(cb.asc(inventory.get("product").get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Inventory> findActiveByBoxId(Long boxId) {
-		return entityManager.createQuery("""
-				FROM Inventory i
-				WHERE i.box.id = :boxId
-				  AND i.active = true
-				  AND i.product.active = true
-				ORDER BY i.product.name ASC
-				""", Inventory.class).setParameter("boxId", boxId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(inventory.get("box").get("id"), boxId),
+						cb.isTrue(inventory.get("active")),
+						cb.isTrue(inventory.get("product").get("active"))))
+				.orderBy(cb.asc(inventory.get("product").get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Inventory> findByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Inventory i
-				WHERE i.box.clinic.id = :clinicId
-				ORDER BY i.box.name ASC, i.product.name ASC
-				""", Inventory.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.equal(inventory.get("box").get("clinic").get("id"), clinicId))
+				.orderBy(
+						cb.asc(inventory.get("box").get("name")),
+						cb.asc(inventory.get("product").get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Inventory> findActiveByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Inventory i
-				WHERE i.box.clinic.id = :clinicId
-				  AND i.active = true
-				  AND i.product.active = true
-				  AND i.box.active = true
-				ORDER BY i.box.name ASC, i.product.name ASC
-				""", Inventory.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(inventory.get("box").get("clinic").get("id"), clinicId),
+						cb.isTrue(inventory.get("active")),
+						cb.isTrue(inventory.get("product").get("active")),
+						cb.isTrue(inventory.get("box").get("active"))))
+				.orderBy(
+						cb.asc(inventory.get("box").get("name")),
+						cb.asc(inventory.get("product").get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Inventory> findLowStockByBoxId(Long boxId) {
-		return entityManager.createQuery("""
-				FROM Inventory i
-				WHERE i.box.id = :boxId
-				  AND i.active = true
-				  AND i.product.active = true
-				  AND i.quantity <= i.minimumQuantity
-				ORDER BY i.product.name ASC
-				""", Inventory.class).setParameter("boxId", boxId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(inventory.get("box").get("id"), boxId),
+						cb.isTrue(inventory.get("active")),
+						cb.isTrue(inventory.get("product").get("active")),
+						cb.lessThanOrEqualTo(inventory.get("quantity"), inventory.get("minimumQuantity"))))
+				.orderBy(cb.asc(inventory.get("product").get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Inventory> findLowStockByClinicId(Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Inventory i
-				WHERE i.box.clinic.id = :clinicId
-				  AND i.active = true
-				  AND i.product.active = true
-				  AND i.box.active = true
-				  AND i.quantity <= i.minimumQuantity
-				ORDER BY i.box.name ASC, i.product.name ASC
-				""", Inventory.class).setParameter("clinicId", clinicId).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Inventory> cq = cb.createQuery(Inventory.class);
+		Root<Inventory> inventory = cq.from(Inventory.class);
+
+		fetchInventoryRelations(inventory);
+
+		cq.select(inventory)
+				.distinct(true)
+				.where(cb.and(
+						cb.equal(inventory.get("box").get("clinic").get("id"), clinicId),
+						cb.isTrue(inventory.get("active")),
+						cb.isTrue(inventory.get("product").get("active")),
+						cb.isTrue(inventory.get("box").get("active")),
+						cb.lessThanOrEqualTo(inventory.get("quantity"), inventory.get("minimumQuantity"))))
+				.orderBy(
+						cb.asc(inventory.get("box").get("name")),
+						cb.asc(inventory.get("product").get("name")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
@@ -114,5 +188,12 @@ public class InventoryDaoImplHibernate implements InventoryDao {
 	@Override
 	public void delete(Inventory inventory) {
 		entityManager.remove(entityManager.contains(inventory) ? inventory : entityManager.merge(inventory));
+	}
+
+	private void fetchInventoryRelations(Root<Inventory> inventory) {
+		Fetch<Object, Object> box = inventory.fetch("box", JoinType.LEFT);
+		box.fetch("clinic", JoinType.LEFT);
+
+		inventory.fetch("product", JoinType.LEFT);
 	}
 }

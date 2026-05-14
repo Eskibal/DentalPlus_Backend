@@ -2,13 +2,18 @@ package com.example.DentalPlus_Backend.daoImplHibernate;
 
 import com.example.DentalPlus_Backend.dao.CalendarRuleDao;
 import com.example.DentalPlus_Backend.model.CalendarRule;
+import com.example.DentalPlus_Backend.model.Clinic;
+import com.example.DentalPlus_Backend.model.Dentist;
+import com.example.DentalPlus_Backend.model.Receptionist;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-
-import java.util.List;
-
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 @Profile("hibernate")
@@ -28,12 +33,16 @@ public class CalendarRuleDaoImplHibernate implements CalendarRuleDao {
 			return null;
 		}
 
-		List<CalendarRule> calendarRules = entityManager.createQuery("""
-				SELECT c.calendarRule
-				FROM Clinic c
-				WHERE c.id = :clinicId
-				  AND c.calendarRule IS NOT NULL
-				""", CalendarRule.class).setParameter("clinicId", clinicId).setMaxResults(1).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarRule> cq = cb.createQuery(CalendarRule.class);
+		Root<Clinic> clinic = cq.from(Clinic.class);
+
+		cq.select(clinic.get("calendarRule"))
+				.where(cb.and(
+						cb.equal(clinic.get("id"), clinicId),
+						cb.isNotNull(clinic.get("calendarRule"))));
+
+		List<CalendarRule> calendarRules = entityManager.createQuery(cq).setMaxResults(1).getResultList();
 
 		return calendarRules.isEmpty() ? null : calendarRules.get(0);
 	}
@@ -44,12 +53,16 @@ public class CalendarRuleDaoImplHibernate implements CalendarRuleDao {
 			return null;
 		}
 
-		List<CalendarRule> calendarRules = entityManager.createQuery("""
-				SELECT d.calendarRule
-				FROM Dentist d
-				WHERE d.id = :dentistId
-				  AND d.calendarRule IS NOT NULL
-				""", CalendarRule.class).setParameter("dentistId", dentistId).setMaxResults(1).getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarRule> cq = cb.createQuery(CalendarRule.class);
+		Root<Dentist> dentist = cq.from(Dentist.class);
+
+		cq.select(dentist.get("calendarRule"))
+				.where(cb.and(
+						cb.equal(dentist.get("id"), dentistId),
+						cb.isNotNull(dentist.get("calendarRule"))));
+
+		List<CalendarRule> calendarRules = entityManager.createQuery(cq).setMaxResults(1).getResultList();
 
 		return calendarRules.isEmpty() ? null : calendarRules.get(0);
 	}
@@ -60,13 +73,16 @@ public class CalendarRuleDaoImplHibernate implements CalendarRuleDao {
 			return null;
 		}
 
-		List<CalendarRule> calendarRules = entityManager.createQuery("""
-				SELECT r.calendarRule
-				FROM Receptionist r
-				WHERE r.id = :receptionistId
-				  AND r.calendarRule IS NOT NULL
-				""", CalendarRule.class).setParameter("receptionistId", receptionistId).setMaxResults(1)
-				.getResultList();
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<CalendarRule> cq = cb.createQuery(CalendarRule.class);
+		Root<Receptionist> receptionist = cq.from(Receptionist.class);
+
+		cq.select(receptionist.get("calendarRule"))
+				.where(cb.and(
+						cb.equal(receptionist.get("id"), receptionistId),
+						cb.isNotNull(receptionist.get("calendarRule"))));
+
+		List<CalendarRule> calendarRules = entityManager.createQuery(cq).setMaxResults(1).getResultList();
 
 		return calendarRules.isEmpty() ? null : calendarRules.get(0);
 	}

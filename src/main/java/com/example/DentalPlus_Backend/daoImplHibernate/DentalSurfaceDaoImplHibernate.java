@@ -1,9 +1,15 @@
 package com.example.DentalPlus_Backend.daoImplHibernate;
 
 import com.example.DentalPlus_Backend.dao.DentalSurfaceDao;
+import com.example.DentalPlus_Backend.model.DentalPiece;
 import com.example.DentalPlus_Backend.model.DentalSurface;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -22,36 +28,69 @@ public class DentalSurfaceDaoImplHibernate implements DentalSurfaceDao {
 	}
 
 	@Override
+	public List<DentalSurface> findByDentalPieceId(Long dentalPieceId) {
+		if (dentalPieceId == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalSurface> cq = cb.createQuery(DentalSurface.class);
+		Root<DentalSurface> surface = cq.from(DentalSurface.class);
+
+		Join<DentalSurface, DentalPiece> dentalPiece = surface.join("dentalPiece", JoinType.INNER);
+
+		cq.select(surface)
+				.where(cb.equal(dentalPiece.get("id"), dentalPieceId))
+				.orderBy(cb.asc(surface.get("surfaceType")));
+
+		return entityManager.createQuery(cq).getResultList();
+	}
+
+	@Override
 	public DentalSurface findByDentalPieceIdAndSurfaceType(Long dentalPieceId, String surfaceType) {
 		if (dentalPieceId == null || surfaceType == null || surfaceType.isBlank()) {
 			return null;
 		}
 
-		return entityManager.createQuery("""
-				FROM DentalSurface ds
-				WHERE ds.dentalPiece.id = :dentalPieceId
-				  AND ds.surfaceType = :surfaceType
-				""", DentalSurface.class).setParameter("dentalPieceId", dentalPieceId)
-				.setParameter("surfaceType", surfaceType.trim().toUpperCase()).getResultStream().findFirst()
-				.orElse(null);
-	}
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalSurface> cq = cb.createQuery(DentalSurface.class);
+		Root<DentalSurface> surface = cq.from(DentalSurface.class);
 
-	@Override
-	public List<DentalSurface> findByDentalPieceId(Long dentalPieceId) {
-		return entityManager.createQuery("""
-				FROM DentalSurface ds
-				WHERE ds.dentalPiece.id = :dentalPieceId
-				ORDER BY ds.surfaceType ASC
-				""", DentalSurface.class).setParameter("dentalPieceId", dentalPieceId).getResultList();
+		Join<DentalSurface, DentalPiece> dentalPiece = surface.join("dentalPiece", JoinType.INNER);
+
+		cq.select(surface)
+				.where(cb.and(
+						cb.equal(dentalPiece.get("id"), dentalPieceId),
+						cb.equal(surface.get("surfaceType"), surfaceType.trim())
+				));
+
+		List<DentalSurface> surfaces = entityManager.createQuery(cq)
+				.setMaxResults(1)
+				.getResultList();
+
+		return surfaces.isEmpty() ? null : surfaces.get(0);
 	}
 
 	@Override
 	public List<DentalSurface> findByOdontogramId(Long odontogramId) {
-		return entityManager.createQuery("""
-				FROM DentalSurface ds
-				WHERE ds.dentalPiece.odontogram.id = :odontogramId
-				ORDER BY ds.dentalPiece.pieceNumber ASC, ds.surfaceType ASC
-				""", DentalSurface.class).setParameter("odontogramId", odontogramId).getResultList();
+		if (odontogramId == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<DentalSurface> cq = cb.createQuery(DentalSurface.class);
+		Root<DentalSurface> surface = cq.from(DentalSurface.class);
+
+		Join<DentalSurface, DentalPiece> dentalPiece = surface.join("dentalPiece", JoinType.INNER);
+
+		cq.select(surface)
+				.where(cb.equal(dentalPiece.get("odontogram").get("id"), odontogramId))
+				.orderBy(
+						cb.asc(dentalPiece.get("pieceNumber")),
+						cb.asc(surface.get("surfaceType"))
+				);
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
@@ -66,7 +105,6 @@ public class DentalSurfaceDaoImplHibernate implements DentalSurfaceDao {
 
 	@Override
 	public void delete(DentalSurface dentalSurface) {
-		entityManager
-				.remove(entityManager.contains(dentalSurface) ? dentalSurface : entityManager.merge(dentalSurface));
+		entityManager.remove(entityManager.contains(dentalSurface) ? dentalSurface : entityManager.merge(dentalSurface));
 	}
 }
