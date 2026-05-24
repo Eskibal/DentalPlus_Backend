@@ -46,34 +46,37 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.function.Supplier;
 
 @Component
 public class ApplicationSeed {
 
-	private static final String DEFAULT_PASSWORD = "Password123";
+	static final String DEFAULT_PASSWORD = "Password123";
 
-	private static final String SEED_MODE_DEMO = "DEMO";
-	private static final String SEED_MODE_PERFORMANCE_LIGHT = "PERFORMANCE_LIGHT";
+	static final String SEED_MODE_DEMO = "DEMO";
+	static final String SEED_MODE_PERFORMANCE_LIGHT = "PERFORMANCE_LIGHT";
+	static final String SEED_MODE_STRESS = "STRESS";
 
-	private static final int PERFORMANCE_EXTRA_ADMIN_COUNT = 2;
-	private static final int PERFORMANCE_EXTRA_RECEPTIONIST_COUNT = 3;
-	private static final int PERFORMANCE_EXTRA_DENTIST_COUNT = 6;
-	private static final int PERFORMANCE_PATIENT_COUNT = 30;
-	private static final int PERFORMANCE_ODONTOGRAM_COUNT = 4;
-	private static final int PERFORMANCE_APPOINTMENT_COUNT = 80;
+	static final int PERFORMANCE_EXTRA_ADMIN_COUNT = 2;
+	static final int PERFORMANCE_EXTRA_RECEPTIONIST_COUNT = 3;
+	static final int PERFORMANCE_EXTRA_DENTIST_COUNT = 6;
+	static final int PERFORMANCE_PATIENT_COUNT = 30;
+	static final int PERFORMANCE_ODONTOGRAM_COUNT = 4;
+	static final int PERFORMANCE_APPOINTMENT_COUNT = 80;
 
 	private static final int ROW_COUNT_WARNING_LIMIT = 4_000;
 	private static final int ROW_COUNT_DANGER_LIMIT = 7_000;
 
-	private static final String PROFILE_IMAGE_RESOURCE = "classpath:seed/profile-image.png";
-	private static final String GENERAL_CONSENT_RESOURCE = "classpath:seed/general-consent.pdf";
-	private static final String TREATMENT_PLAN_RESOURCE = "classpath:seed/treatment-plan.pdf";
+	private static final int PROFILE_IMAGE_COUNT = 50;
+	private static final String PROFILE_IMAGE_RESOURCE_PATTERN = "classpath:seed/profile-images/profile-%02d.jpg";
+
+	static final String GENERAL_CONSENT_RESOURCE = "classpath:seed/general-consent.pdf";
+	static final String TREATMENT_PLAN_RESOURCE = "classpath:seed/treatment-plan.pdf";
 
 	private static final String[] TABLES_TO_TRUNCATE = { "dental_bridge_piece", "dental_bridge", "dental_surface_mark",
 			"dental_surface", "dental_piece_state", "dental_piece", "odontogram", "document", "appointment",
@@ -95,6 +98,7 @@ public class ApplicationSeed {
 	private final ResourceLoader resourceLoader;
 
 	private final Scanner scanner = new Scanner(System.in);
+	private final Random profileImageRandom = new Random();
 
 	private Long adminUserId;
 	private Long receptionistUserId;
@@ -165,20 +169,20 @@ public class ApplicationSeed {
 				throw new IllegalStateException("Seed data could not be loaded");
 			}
 
-			System.out.println("[INFO] Uploading optional seed files...");
-			runOptionalStep("Base Cloudinary/Supabase uploads", () -> uploadOptionalSeedFiles(seedState));
-
-			if (SEED_MODE_PERFORMANCE_LIGHT.equals(seedMode)) {
-				System.out.println("[INFO] Uploading optional performance files...");
-				runOptionalStep("Performance Cloudinary/Supabase uploads",
-						() -> uploadOptionalPerformanceFiles(seedState));
-			}
+			System.out.println("[INFO] Uploading seed profile images and PDF documents...");
+			runOptionalStep("Seed external file uploads", () -> uploadSeedExternalFiles(seedState, seedMode));
 
 			System.out.println("[INFO] Running diagnostics...");
 			measureMillis("Base diagnostics", () -> runDiagnostics(seedState));
 
-			if (SEED_MODE_PERFORMANCE_LIGHT.equals(seedMode)) {
-				runOptionalStep("Performance diagnostics", () -> runPerformanceDiagnostics(seedState));
+			if (isPerformanceOrStress(seedMode)) {
+				PerformanceSeed performanceSeed = new PerformanceSeed(this);
+				runOptionalStep("Performance diagnostics", () -> performanceSeed.runDiagnostics(seedState));
+			}
+
+			if (SEED_MODE_STRESS.equals(seedMode)) {
+				StressSeed stressSeed = new StressSeed(this);
+				runOptionalStep("Stress diagnostics", () -> stressSeed.runDiagnostics(seedState));
 			}
 
 			runOptionalStep("Database load estimate", this::printDatabaseLoadEstimate);
@@ -212,15 +216,16 @@ public class ApplicationSeed {
 		System.out.println("[WARNING] This process is destructive.");
 		System.out.println("[WARNING] It will delete database data and external files");
 		System.out.println("[WARNING] registered in Cloudinary/Supabase when possible.");
-		System.out.println("[INFO] DEMO keeps the current small Postman/frontend dataset.");
-		System.out.println("[INFO] PERFORMANCE_LIGHT adds controlled data and timing diagnostics.");
-		System.out.println("[INFO] Performance mode is conservative for small DB providers.");
+		System.out.println("[INFO] DEMO loads a small realistic dataset.");
+		System.out.println("[INFO] PERFORMANCE_LIGHT loads demo + controlled performance data.");
+		System.out.println("[INFO] STRESS loads demo + performance + massive stress data.");
+		System.out.println("[INFO] All modes upload profile images and patient PDF documents when resources exist.");
 		System.out.println("============================================================");
 		System.out.println();
 	}
 
 	private boolean confirmDangerousReset() {
-		System.out.println("Type SEED to delete current data and load demo data:");
+		System.out.println("Type SEED to delete current data and load seed data:");
 		String confirmation = readLine();
 
 		return "SEED".equals(confirmation);
@@ -229,9 +234,14 @@ public class ApplicationSeed {
 	private String askSeedMode() {
 		System.out.println();
 		System.out.println("Choose seed mode:");
-		System.out.println("1. DEMO - current small dataset for Postman/frontend");
-		System.out.println("2. PERFORMANCE_LIGHT - demo dataset plus controlled performance data");
+		System.out.println("1. DEMO - small realistic dataset for Postman/frontend");
+		System.out.println("2. PERFORMANCE_LIGHT - demo + controlled performance data");
+		System.out.println("3. STRESS - demo + performance + massive stress data");
 		String answer = readLine();
+
+		if ("3".equals(answer) || SEED_MODE_STRESS.equalsIgnoreCase(answer)) {
+			return SEED_MODE_STRESS;
+		}
 
 		if ("2".equals(answer) || SEED_MODE_PERFORMANCE_LIGHT.equalsIgnoreCase(answer)) {
 			return SEED_MODE_PERFORMANCE_LIGHT;
@@ -248,11 +258,15 @@ public class ApplicationSeed {
 		return answer == null || answer.isBlank() || answer.equalsIgnoreCase("y") || answer.equalsIgnoreCase("yes");
 	}
 
-	private String readLine() {
+	String readLine() {
 		return scanner.nextLine().trim();
 	}
 
-	private <T> T measureMillis(String label, Supplier<T> action) {
+	private boolean isPerformanceOrStress(String seedMode) {
+		return SEED_MODE_PERFORMANCE_LIGHT.equals(seedMode) || SEED_MODE_STRESS.equals(seedMode);
+	}
+
+	<T> T measureMillis(String label, Supplier<T> action) {
 		long start = System.nanoTime();
 
 		try {
@@ -267,7 +281,7 @@ public class ApplicationSeed {
 		}
 	}
 
-	private void measureMillis(String label, Runnable action) {
+	void measureMillis(String label, Runnable action) {
 		long start = System.nanoTime();
 
 		try {
@@ -281,13 +295,28 @@ public class ApplicationSeed {
 		}
 	}
 
-	private void runOptionalStep(String label, Runnable action) {
+	void runOptionalStep(String label, Runnable action) {
 		try {
 			measureMillis(label, action);
 		} catch (RuntimeException e) {
 			System.out.println("[WARN] Optional step failed: " + label);
 			System.out.println("[WARN] " + e.getMessage());
 		}
+	}
+
+	private void printRate(String label, int itemCount, long elapsedMillis) {
+		if (itemCount <= 0) {
+			System.out.println("[PERF] " + label + " processed 0 items.");
+			return;
+		}
+
+		double seconds = elapsedMillis / 1000.0;
+		double itemsPerSecond = seconds <= 0 ? itemCount : itemCount / seconds;
+		double averageMillis = elapsedMillis / (double) itemCount;
+
+		System.out.println("[PERF] " + label + " processed " + itemCount + " items in " + elapsedMillis + " ms");
+		System.out.println("[PERF] " + label + " average: " + String.format("%.2f", averageMillis) + " ms/item");
+		System.out.println("[PERF] " + label + " rate: " + String.format("%.2f", itemsPerSecond) + " items/s");
 	}
 
 	private void handleSeedFailure(RuntimeException e) {
@@ -300,10 +329,11 @@ public class ApplicationSeed {
 		if (lowerMessage.contains("table is full") || lowerMessage.contains("database is full")
 				|| lowerMessage.contains("disk full") || lowerMessage.contains("no space left")
 				|| lowerMessage.contains("size limit") || lowerMessage.contains("quota")
-				|| lowerMessage.contains("too many connections") || lowerMessage.contains("max_questions")) {
-			System.out.println("[ERROR] The database may be full or over its provider limit.");
+				|| lowerMessage.contains("too many connections") || lowerMessage.contains("max_questions")
+				|| lowerMessage.contains("timeout")) {
+			System.out.println("[ERROR] The database/storage provider may be full, slow or over its limit.");
 			System.out.println("[ERROR] Seed was stopped to avoid leaving the environment unstable.");
-			System.out.println("[TIP] Use DEMO mode or reduce PERFORMANCE_* constants.");
+			System.out.println("[TIP] Use DEMO mode or reduce performance/stress constants.");
 		} else {
 			System.out.println("[ERROR] Seed failed with an unexpected error.");
 		}
@@ -406,8 +436,9 @@ public class ApplicationSeed {
 		LocalTime breakStart = LocalTime.of(13, 0);
 		LocalTime breakEnd = LocalTime.of(14, 0);
 
-		Organization organization = measureMillis("Base organization loading", () -> persist(
-				new Organization("Default Organization", true, "Seed organization for development and demonstration")));
+		Organization organization = measureMillis("Base organization loading",
+				() -> persist(new Organization("DentalPlus Group", true,
+						"Demo organization for DentalPlus development and presentation")));
 
 		CalendarRule clinicCalendarRule = measureMillis("Base calendar rule loading",
 				() -> persist(new CalendarRule(workStart, workEnd, workStart, workEnd, workStart, workEnd, workStart,
@@ -415,9 +446,9 @@ public class ApplicationSeed {
 						"Default clinic working calendar")));
 
 		Clinic clinic = measureMillis("Base clinic loading",
-				() -> persist(new Clinic(organization, clinicCalendarRule, "Default Clinic", true, "Default Country",
-						"Default City", "Default Address", "10000000000", "clinic@example.com", "UTC",
-						"Seed clinic for development and demonstration")));
+				() -> persist(new Clinic(organization, clinicCalendarRule, "DentalPlus Barcelona Centre", true,
+						"Spain", "Barcelona", "Carrer de Mallorca 245", "930000001",
+						"clinic.barcelona@dentalplus.demo", "Europe/Madrid", "Main demo clinic for DentalPlus")));
 
 		measureMillis("Base calendar breaks and holiday loading", () -> {
 			persistBreaks(clinicCalendarRule, breakStart, breakEnd);
@@ -428,8 +459,8 @@ public class ApplicationSeed {
 
 		List<Box> boxes = measureMillis("Base boxes loading", () -> {
 			List<Box> createdBoxes = new ArrayList<>();
-			createdBoxes.add(persist(new Box(clinic, "Box 1", true, "Primary demo box")));
-			createdBoxes.add(persist(new Box(clinic, "Box 2", true, "Secondary demo box")));
+			createdBoxes.add(persist(new Box(clinic, "Gabinete 1 - General", true, "General dentistry room")));
+			createdBoxes.add(persist(new Box(clinic, "Gabinete 2 - Surgery", true, "Surgery and extraction room")));
 			return createdBoxes;
 		});
 
@@ -439,16 +470,17 @@ public class ApplicationSeed {
 		List<StaffSeed> baseStaff = measureMillis("Base staff loading", () -> {
 			List<StaffSeed> staff = new ArrayList<>();
 
-			staff.add(createStaff("admin", "admin@example.com", "Admin", "User", "Sample", clinic, "ADMIN", null));
+			staff.add(createStaff("clara.mendez", "admin@dentalplus.demo", "Clara", "Méndez", "Soler", clinic,
+					"ADMIN", null));
 
-			staff.add(createStaff("receptionist", "receptionist@example.com", "Reception", "User", "Sample", clinic,
+			staff.add(createStaff("marta.ruiz", "reception@dentalplus.demo", "Marta", "Ruiz", "Pons", clinic,
 					"RECEPTIONIST", null));
 
-			staff.add(createStaff("dentist.primary", "dentist.primary@example.com", "Dentist", "Primary", "Sample",
+			staff.add(createStaff("daniel.ortega", "dentist.general@dentalplus.demo", "Daniel", "Ortega", "Vidal",
 					clinic, "DENTIST", "General Dentistry"));
 
-			staff.add(createStaff("dentist.secondary", "dentist.secondary@example.com", "Dentist", "Secondary",
-					"Sample", clinic, "DENTIST", "Restorative Dentistry"));
+			staff.add(createStaff("irene.navarro", "dentist.surgery@dentalplus.demo", "Irene", "Navarro", "Costa",
+					clinic, "DENTIST", "Restorative Dentistry"));
 
 			return staff;
 		});
@@ -458,65 +490,19 @@ public class ApplicationSeed {
 		StaffSeed primaryDentistSeed = baseStaff.get(2);
 		StaffSeed secondaryDentistSeed = baseStaff.get(3);
 
-		List<Patient> basePatients = measureMillis("Base patients loading", () -> {
-			List<Patient> patients = new ArrayList<>();
+		DemoSeed demoSeed = new DemoSeed(this);
+		DemoSeedData demoSeedData = demoSeed.load(clinic, boxOne, boxTwo, primaryDentistSeed, secondaryDentistSeed);
 
-			patients.add(createPatient(clinic, "Patient", "One", "Sample", "patient.one@example.com", "10000000001",
-					LocalDate.of(1990, 1, 1), "ALLERGY:PENICILLIN", "Routine dental checkup"));
-
-			patients.add(createPatient(clinic, "Patient", "Two", "Sample", "patient.two@example.com", "10000000002",
-					LocalDate.of(1988, 2, 2), null, "Preventive dental visit"));
-
-			patients.add(createPatient(clinic, "Patient", "Three", "Sample", "patient.three@example.com",
-					"10000000003", LocalDate.of(1995, 3, 3), "INFECTION_RISK:HEPATITIS_B", "Dental assessment"));
-
-			patients.add(createPatient(clinic, "Patient", "Four", "Sample", "patient.four@example.com", "10000000004",
-					LocalDate.of(1992, 4, 4), null, "Follow-up consultation"));
-
-			return patients;
-		});
+		List<Patient> basePatients = demoSeedData.patients();
+		List<Odontogram> baseOdontograms = demoSeedData.odontograms();
+		List<Appointment> baseAppointments = demoSeedData.appointments();
 
 		Patient patientOne = basePatients.get(0);
 		Patient patientTwo = basePatients.get(1);
 		Patient patientThree = basePatients.get(2);
 		Patient patientFour = basePatients.get(3);
 
-		List<Odontogram> baseOdontograms = measureMillis("Base odontograms loading", () -> {
-			List<Odontogram> odontograms = new ArrayList<>();
-
-			odontograms.add(createOdontogram(patientOne));
-			odontograms.add(createOdontogram(patientTwo));
-			odontograms.add(createOdontogram(patientThree));
-			odontograms.add(createOdontogram(patientFour));
-
-			return odontograms;
-		});
-
 		Odontogram odontogramOne = baseOdontograms.get(0);
-		Odontogram odontogramTwo = baseOdontograms.get(1);
-		Odontogram odontogramThree = baseOdontograms.get(2);
-		Odontogram odontogramFour = baseOdontograms.get(3);
-
-		measureMillis("Base dental marks loading",
-				() -> createDemoDentalMarks(odontogramOne, odontogramTwo, odontogramThree, odontogramFour));
-
-		List<Appointment> baseAppointments = measureMillis("Base appointments loading", () -> {
-			List<Appointment> appointments = new ArrayList<>();
-
-			appointments.add(persist(new Appointment(boxOne, primaryDentistSeed.dentist(), patientOne,
-					LocalDateTime.of(2026, 5, 1, 10, 0), LocalDateTime.of(2026, 5, 1, 10, 30), "SCHEDULED",
-					"Routine checkup", "Routine appointment created by ApplicationSeed", true)));
-
-			appointments.add(persist(new Appointment(boxTwo, secondaryDentistSeed.dentist(), patientTwo,
-					LocalDateTime.of(2026, 5, 1, 11, 0), LocalDateTime.of(2026, 5, 1, 11, 30), "SCHEDULED",
-					"Dental cleaning", "Second routine appointment created by ApplicationSeed", true)));
-
-			appointments.add(persist(new Appointment(boxOne, primaryDentistSeed.dentist(), patientThree,
-					LocalDateTime.of(2026, 5, 4, 15, 0), LocalDateTime.of(2026, 5, 4, 15, 45), "SCHEDULED",
-					"Follow-up consultation", "Follow-up appointment created by ApplicationSeed", true)));
-
-			return appointments;
-		});
 
 		List<StaffSeed> performanceAdmins = new ArrayList<>();
 		List<StaffSeed> performanceReceptionists = new ArrayList<>();
@@ -525,8 +511,9 @@ public class ApplicationSeed {
 		List<Odontogram> performanceOdontograms = new ArrayList<>();
 		List<Appointment> performanceAppointments = new ArrayList<>();
 
-		if (SEED_MODE_PERFORMANCE_LIGHT.equals(seedMode)) {
-			PerformanceSeedData performanceSeedData = createPerformanceData(clinic, boxOne, boxTwo, primaryDentistSeed,
+		if (isPerformanceOrStress(seedMode)) {
+			PerformanceSeed performanceSeed = new PerformanceSeed(this);
+			PerformanceSeedData performanceSeedData = performanceSeed.load(clinic, boxOne, boxTwo, primaryDentistSeed,
 					secondaryDentistSeed);
 
 			performanceAdmins = performanceSeedData.admins();
@@ -535,6 +522,28 @@ public class ApplicationSeed {
 			performancePatients = performanceSeedData.patients();
 			performanceOdontograms = performanceSeedData.odontograms();
 			performanceAppointments = performanceSeedData.appointments();
+		}
+
+		List<Patient> stressPatients = new ArrayList<>();
+		List<Odontogram> stressOdontograms = new ArrayList<>();
+		List<Appointment> stressAppointments = new ArrayList<>();
+
+		if (SEED_MODE_STRESS.equals(seedMode)) {
+			List<StaffSeed> availableDentists = new ArrayList<>();
+			availableDentists.add(primaryDentistSeed);
+			availableDentists.add(secondaryDentistSeed);
+			availableDentists.addAll(performanceDentists);
+
+			List<Patient> existingPatients = new ArrayList<>();
+			existingPatients.addAll(basePatients);
+			existingPatients.addAll(performancePatients);
+
+			StressSeed stressSeed = new StressSeed(this);
+			StressSeedData stressSeedData = stressSeed.load(clinic, boxes, availableDentists, existingPatients);
+
+			stressPatients = stressSeedData.patients();
+			stressOdontograms = stressSeedData.odontograms();
+			stressAppointments = stressSeedData.appointments();
 		}
 
 		entityManager.flush();
@@ -555,16 +564,30 @@ public class ApplicationSeed {
 		this.firstBoxId = boxOne.getId();
 		this.firstAppointmentId = baseAppointments.get(0).getId();
 
+		List<Person> allPersons = new ArrayList<>();
+		addStaffPersons(allPersons, baseStaff);
+		addPatientPersons(allPersons, basePatients);
+		addStaffPersons(allPersons, performanceAdmins);
+		addStaffPersons(allPersons, performanceReceptionists);
+		addStaffPersons(allPersons, performanceDentists);
+		addPatientPersons(allPersons, performancePatients);
+		addPatientPersons(allPersons, stressPatients);
+
+		List<Patient> allPatients = new ArrayList<>();
+		allPatients.addAll(basePatients);
+		allPatients.addAll(performancePatients);
+		allPatients.addAll(stressPatients);
+
 		System.out.println("[OK] Organization created: " + organization.getId());
 		System.out.println("[OK] Clinic created: " + clinic.getId());
 		System.out.println("[OK] Boxes created: " + boxOne.getId() + ", " + boxTwo.getId());
 		System.out.println("[OK] Base staff users created: 4");
-		System.out.println("[OK] Base patients created: 4");
-		System.out.println("[OK] Base odontograms created: 4");
+		System.out.println("[OK] Base patients created: " + basePatients.size());
+		System.out.println("[OK] Base odontograms created: " + baseOdontograms.size());
 		System.out.println("[OK] Base dental surface marks created.");
-		System.out.println("[OK] Base appointments created: 3");
+		System.out.println("[OK] Base appointments created: " + baseAppointments.size());
 
-		if (SEED_MODE_PERFORMANCE_LIGHT.equals(seedMode)) {
+		if (isPerformanceOrStress(seedMode)) {
 			System.out.println("[OK] Performance admins created: " + performanceAdmins.size());
 			System.out.println("[OK] Performance receptionists created: " + performanceReceptionists.size());
 			System.out.println("[OK] Performance dentists created: " + performanceDentists.size());
@@ -573,157 +596,39 @@ public class ApplicationSeed {
 			System.out.println("[OK] Performance appointments created: " + performanceAppointments.size());
 		}
 
+		if (SEED_MODE_STRESS.equals(seedMode)) {
+			System.out.println("[OK] Stress patients created: " + stressPatients.size());
+			System.out.println("[OK] Stress odontograms created: " + stressOdontograms.size());
+			System.out.println("[OK] Stress appointments created: " + stressAppointments.size());
+		}
+
+		System.out.println("[OK] Persons eligible for profile images: " + allPersons.size());
+		System.out.println("[OK] Patients eligible for PDF documents: " + allPatients.size());
+
 		return new SeedState(organization, clinic, clinicCalendarRule, boxOne, boxTwo, adminSeed, receptionistSeed,
 				primaryDentistSeed, secondaryDentistSeed, patientOne, patientTwo, patientThree, patientFour,
 				odontogramOne, baseAppointments.get(0), performanceAdmins, performanceReceptionists,
-				performanceDentists, performancePatients, performanceOdontograms, performanceAppointments);
+				performanceDentists, performancePatients, performanceOdontograms, performanceAppointments,
+				stressPatients, stressOdontograms, stressAppointments, allPersons, allPatients);
 	}
 
-	private PerformanceSeedData createPerformanceData(Clinic clinic, Box boxOne, Box boxTwo, StaffSeed primaryDentistSeed,
-			StaffSeed secondaryDentistSeed) {
-		List<StaffSeed> performanceAdmins = measureMillis("Performance admins loading", () -> {
-			List<StaffSeed> admins = new ArrayList<>();
-
-			for (int i = 1; i <= PERFORMANCE_EXTRA_ADMIN_COUNT; i++) {
-				String suffix = String.format("%02d", i);
-				admins.add(createStaff("admin.perf." + suffix, "admin.perf." + suffix + "@example.com", "Admin",
-						"Performance", suffix, clinic, "ADMIN", null));
+	private void addStaffPersons(List<Person> persons, List<StaffSeed> staffSeeds) {
+		for (StaffSeed staffSeed : staffSeeds) {
+			if (staffSeed != null && staffSeed.person() != null) {
+				persons.add(staffSeed.person());
 			}
-
-			return admins;
-		});
-
-		List<StaffSeed> performanceReceptionists = measureMillis("Performance receptionists loading", () -> {
-			List<StaffSeed> receptionists = new ArrayList<>();
-
-			for (int i = 1; i <= PERFORMANCE_EXTRA_RECEPTIONIST_COUNT; i++) {
-				String suffix = String.format("%02d", i);
-				receptionists.add(createStaff("receptionist.perf." + suffix,
-						"receptionist.perf." + suffix + "@example.com", "Receptionist", "Performance", suffix, clinic,
-						"RECEPTIONIST", null));
-			}
-
-			return receptionists;
-		});
-
-		List<StaffSeed> performanceDentists = measureMillis("Performance dentists loading", () -> {
-			List<StaffSeed> dentists = new ArrayList<>();
-			String[] specialties = { "General Dentistry", "Restorative Dentistry", "Endodontics", "Periodontics",
-					"Prosthodontics", "Pediatric Dentistry" };
-
-			for (int i = 1; i <= PERFORMANCE_EXTRA_DENTIST_COUNT; i++) {
-				String suffix = String.format("%02d", i);
-				String specialty = specialties[(i - 1) % specialties.length];
-
-				dentists.add(createStaff("dentist.perf." + suffix, "dentist.perf." + suffix + "@example.com",
-						"Dentist", "Performance", suffix, clinic, "DENTIST", specialty));
-			}
-
-			return dentists;
-		});
-
-		List<Patient> performancePatients = measureMillis("Performance patients loading", () -> {
-			List<Patient> patients = new ArrayList<>();
-
-			for (int i = 1; i <= PERFORMANCE_PATIENT_COUNT; i++) {
-				String suffix = String.format("%03d", i);
-
-				patients.add(createPatient(clinic, "Performance", "Patient", suffix,
-						"patient.performance." + suffix + "@example.com", "20000000" + suffix,
-						LocalDate.of(1980 + (i % 25), ((i - 1) % 12) + 1, ((i - 1) % 27) + 1),
-						resolvePerformanceMedicalAlert(i), "Performance seed patient " + suffix));
-			}
-
-			return patients;
-		});
-
-		List<Odontogram> performanceOdontograms = measureMillis("Performance odontograms loading", () -> {
-			List<Odontogram> odontograms = new ArrayList<>();
-			int odontogramsToCreate = Math.min(PERFORMANCE_ODONTOGRAM_COUNT, performancePatients.size());
-
-			for (int i = 0; i < odontogramsToCreate; i++) {
-				odontograms.add(createOdontogram(performancePatients.get(i)));
-			}
-
-			return odontograms;
-		});
-
-		List<Appointment> performanceAppointments = measureMillis("Performance appointments loading", () -> {
-			List<Appointment> appointments = new ArrayList<>();
-			List<Dentist> dentists = new ArrayList<>();
-
-			dentists.add(primaryDentistSeed.dentist());
-			dentists.add(secondaryDentistSeed.dentist());
-
-			for (StaffSeed performanceDentist : performanceDentists) {
-				dentists.add(performanceDentist.dentist());
-			}
-
-			List<Box> boxes = List.of(boxOne, boxTwo);
-
-			LocalTime[] appointmentTimes = { LocalTime.of(9, 0), LocalTime.of(9, 30), LocalTime.of(10, 0),
-					LocalTime.of(10, 30), LocalTime.of(11, 0), LocalTime.of(11, 30), LocalTime.of(12, 0),
-					LocalTime.of(12, 30), LocalTime.of(14, 0), LocalTime.of(14, 30), LocalTime.of(15, 0),
-					LocalTime.of(15, 30), LocalTime.of(16, 0), LocalTime.of(16, 30), LocalTime.of(17, 0) };
-
-			String[] treatments = { "Routine checkup", "Dental cleaning", "Caries review", "Restoration follow-up",
-					"Endodontic assessment", "Periodontal review", "Crown assessment", "Bridge review" };
-
-			int created = 0;
-			int dayOffset = 0;
-
-			while (created < PERFORMANCE_APPOINTMENT_COUNT) {
-				LocalDate date = LocalDate.of(2026, 5, 5).plusDays(dayOffset);
-
-				for (int timeIndex = 0; timeIndex < appointmentTimes.length
-						&& created < PERFORMANCE_APPOINTMENT_COUNT; timeIndex++) {
-					for (int boxIndex = 0; boxIndex < boxes.size()
-							&& created < PERFORMANCE_APPOINTMENT_COUNT; boxIndex++) {
-						Box box = boxes.get(boxIndex);
-						Dentist dentist = dentists.get((dayOffset + timeIndex + boxIndex) % dentists.size());
-						Patient patient = performancePatients.get(created % performancePatients.size());
-						LocalDateTime start = LocalDateTime.of(date, appointmentTimes[timeIndex]);
-						LocalDateTime end = start.plusMinutes(30);
-						String treatment = treatments[created % treatments.length];
-
-						appointments.add(persist(new Appointment(box, dentist, patient, start, end, "SCHEDULED",
-								treatment, "Performance appointment " + String.format("%03d", created + 1), true)));
-
-						created++;
-					}
-				}
-
-				dayOffset++;
-			}
-
-			return appointments;
-		});
-
-		return new PerformanceSeedData(performanceAdmins, performanceReceptionists, performanceDentists,
-				performancePatients, performanceOdontograms, performanceAppointments);
+		}
 	}
 
-	private String resolvePerformanceMedicalAlert(int index) {
-		if (index % 15 == 0) {
-			return "ALLERGY:PENICILLIN|INFECTION_RISK:HEPATITIS_B";
+	private void addPatientPersons(List<Person> persons, List<Patient> patients) {
+		for (Patient patient : patients) {
+			if (patient != null && patient.getPerson() != null) {
+				persons.add(patient.getPerson());
+			}
 		}
-
-		if (index % 10 == 0) {
-			return "BLEEDING_RISK:ANTICOAGULANTS";
-		}
-
-		if (index % 7 == 0) {
-			return "INFECTION_RISK:HEPATITIS_B";
-		}
-
-		if (index % 5 == 0) {
-			return "ALLERGY:PENICILLIN";
-		}
-
-		return null;
 	}
 
-	private void persistBreaks(CalendarRule calendarRule, LocalTime breakStart, LocalTime breakEnd) {
+	void persistBreaks(CalendarRule calendarRule, LocalTime breakStart, LocalTime breakEnd) {
 		persist(new CalendarBreak(calendarRule, "MONDAY", breakStart, breakEnd, true, "Default lunch break"));
 		persist(new CalendarBreak(calendarRule, "TUESDAY", breakStart, breakEnd, true, "Default lunch break"));
 		persist(new CalendarBreak(calendarRule, "WEDNESDAY", breakStart, breakEnd, true, "Default lunch break"));
@@ -731,13 +636,13 @@ public class ApplicationSeed {
 		persist(new CalendarBreak(calendarRule, "FRIDAY", breakStart, breakEnd, true, "Default lunch break"));
 	}
 
-	private StaffSeed createStaff(String username, String email, String name, String firstSurname, String secondSurname,
+	StaffSeed createStaff(String username, String email, String name, String firstSurname, String secondSurname,
 			Clinic clinic, String role, String speciality) {
 		User user = persist(
 				new User(username, passwordEncoder.encode(DEFAULT_PASSWORD), "SYSTEM", "en", true, "Seed user"));
 
 		Person person = persist(new Person(name, firstSurname, secondSurname, LocalDate.of(1990, 1, 1), "OTHER", email,
-				"+1", "10000000000", "Default Address", "Default City", null, true, "Seed staff person"));
+				"+34", "600000000", "Default Address", "Barcelona", null, true, "Seed staff person"));
 
 		if ("ADMIN".equals(role)) {
 			Admin admin = persist(new Admin(person, user, clinic, true, "Seed admin"));
@@ -758,15 +663,15 @@ public class ApplicationSeed {
 		throw new IllegalArgumentException("Unsupported staff role: " + role);
 	}
 
-	private Patient createPatient(Clinic clinic, String name, String firstSurname, String secondSurname, String email,
+	Patient createPatient(Clinic clinic, String name, String firstSurname, String secondSurname, String email,
 			String phoneNumber, LocalDate birthDate, String medicalAlert, String consultationReason) {
-		Person person = persist(new Person(name, firstSurname, secondSurname, birthDate, "OTHER", email, "+1",
-				phoneNumber, "Default Address", "Default City", null, true, consultationReason));
+		Person person = persist(new Person(name, firstSurname, secondSurname, birthDate, "OTHER", email, "+34",
+				phoneNumber, "Default Address", "Barcelona", null, true, consultationReason));
 
 		return persist(new Patient(person, null, clinic, true, medicalAlert, consultationReason));
 	}
 
-	private Odontogram createOdontogram(Patient patient) {
+	Odontogram createOdontogram(Patient patient) {
 		Odontogram odontogram = persist(new Odontogram(patient));
 		odontogram.setViewMode("MIXED");
 
@@ -787,24 +692,7 @@ public class ApplicationSeed {
 		return odontogram;
 	}
 
-	private void createDemoDentalMarks(Odontogram odontogramOne, Odontogram odontogramTwo, Odontogram odontogramThree,
-			Odontogram odontogramFour) {
-		createSurfaceMark(odontogramOne, 11, "MESIAL", "CARIES", "PENDING", "Initial caries observation");
-		createSurfaceMark(odontogramOne, 16, "OCCLUSAL", "FILLING", "DONE", "Existing restoration");
-		createPieceState(odontogramOne, 26, "CROWN_PENDING", "Crown treatment planned");
-
-		createSurfaceMark(odontogramTwo, 21, "DISTAL", "CARIES", "PENDING", "Interproximal caries observation");
-		createSurfaceMark(odontogramTwo, 36, "OCCLUSAL", "FISSURE_SEALANT", "DONE", "Preventive fissure sealant");
-
-		createSurfaceMark(odontogramThree, 46, "VESTIBULAR", "CROWN", "PENDING", "Crown assessment pending");
-		createPieceState(odontogramThree, 15, "ENDODONTICS_DONE", "Previous endodontic treatment");
-
-		createSurfaceMark(odontogramFour, 14, "MESIAL", "FILLING", "DONE", "Existing filling");
-		createSurfaceMark(odontogramFour, 24, "DISTAL", "CARIES", "PENDING", "Caries follow-up required");
-		createPieceState(odontogramFour, 55, "NATURAL_ABSENCE", "Temporary tooth naturally absent");
-	}
-
-	private void createSurfaceMark(Odontogram odontogram, Integer pieceNumber, String surfaceType, String markType,
+	void createSurfaceMark(Odontogram odontogram, Integer pieceNumber, String surfaceType, String markType,
 			String markState, String notes) {
 		DentalPiece dentalPiece = findSeedDentalPiece(odontogram, pieceNumber);
 
@@ -823,7 +711,7 @@ public class ApplicationSeed {
 		persist(dentalSurfaceMark);
 	}
 
-	private void createPieceState(Odontogram odontogram, Integer pieceNumber, String stateType, String notes) {
+	void createPieceState(Odontogram odontogram, Integer pieceNumber, String stateType, String notes) {
 		DentalPiece dentalPiece = findSeedDentalPiece(odontogram, pieceNumber);
 
 		if (dentalPiece == null) {
@@ -833,75 +721,151 @@ public class ApplicationSeed {
 		persist(new DentalPieceState(dentalPiece, stateType, notes));
 	}
 
-	private DentalPiece findSeedDentalPiece(Odontogram odontogram, Integer pieceNumber) {
+	DentalPiece findSeedDentalPiece(Odontogram odontogram, Integer pieceNumber) {
 		return dentalPieceDao.findByOdontogramIdAndPieceNumber(odontogram.getId(), pieceNumber);
 	}
 
-	private DentalSurface findSeedDentalSurface(DentalPiece dentalPiece, String surfaceType) {
+	DentalSurface findSeedDentalSurface(DentalPiece dentalPiece, String surfaceType) {
 		return dentalSurfaceDao.findByDentalPieceIdAndSurfaceType(dentalPiece.getId(), surfaceType);
 	}
 
-	private void uploadOptionalSeedFiles(SeedState seedState) {
-		transactionTemplate.executeWithoutResult(status -> {
-			uploadOptionalProfileImage(seedState.admin().person());
-			uploadOptionalProfileImage(seedState.receptionist().person());
-			uploadOptionalProfileImage(seedState.primaryDentist().person());
-			uploadOptionalProfileImage(seedState.secondaryDentist().person());
-		});
+	private void uploadSeedExternalFiles(SeedState seedState, String seedMode) {
+		System.out.println();
+		System.out.println("========== External File Uploads ==========");
+		System.out.println("[INFO] Mode: " + seedMode);
+		System.out.println("[INFO] Profile image pool: " + PROFILE_IMAGE_COUNT + " files");
+		System.out.println("[INFO] Persons to upload profile images: " + seedState.allPersons().size());
+		System.out.println("[INFO] Patients to upload PDFs: " + seedState.allPatients().size());
+		System.out.println("[INFO] Expected PDF uploads: " + (seedState.allPatients().size() * 2));
 
-		uploadOptionalDocument(seedState.patientOne(), GENERAL_CONSENT_RESOURCE, "General Consent Document", "CONSENT");
-		uploadOptionalDocument(seedState.patientOne(), TREATMENT_PLAN_RESOURCE, "Treatment Plan Document", "REPORT");
+		int uploadedImages = uploadProfileImagesForPersons(seedState.allPersons());
+		int uploadedDocuments = uploadDocumentsForPatients(seedState.allPatients());
+
+		System.out.println("[OK] Profile images uploaded: " + uploadedImages + "/" + seedState.allPersons().size());
+		System.out.println("[OK] PDF documents uploaded: " + uploadedDocuments + "/"
+				+ (seedState.allPatients().size() * 2));
+		System.out.println("===========================================");
+		System.out.println();
 	}
 
-	private void uploadOptionalPerformanceFiles(SeedState seedState) {
-		transactionTemplate.executeWithoutResult(status -> {
-			seedState.performanceAdmins().stream().limit(1).forEach(staff -> uploadOptionalProfileImage(staff.person()));
-			seedState.performanceReceptionists().stream().limit(1)
-					.forEach(staff -> uploadOptionalProfileImage(staff.person()));
-			seedState.performanceDentists().stream().limit(1)
-					.forEach(staff -> uploadOptionalProfileImage(staff.person()));
-		});
+	private int uploadProfileImagesForPersons(List<Person> persons) {
+		long start = System.nanoTime();
+		int uploaded = 0;
 
-		seedState.performancePatients().stream().limit(1).forEach(patient -> uploadOptionalDocument(patient,
-				GENERAL_CONSENT_RESOURCE, "Performance General Consent Document", "CONSENT"));
+		for (Person person : persons) {
+			int imageIndex = resolveRandomProfileImageIndex();
+
+			if (uploadOptionalProfileImage(person, imageIndex)) {
+				uploaded++;
+			}
+		}
+
+		long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+		printRate("Profile image uploads", uploaded, elapsedMillis);
+
+		return uploaded;
 	}
 
-	private void uploadOptionalProfileImage(Person person) {
-		Resource resource = resourceLoader.getResource(PROFILE_IMAGE_RESOURCE);
+	private int uploadDocumentsForPatients(List<Patient> patients) {
+		long start = System.nanoTime();
+		int uploaded = 0;
+
+		for (Patient patient : patients) {
+			if (uploadOptionalDocument(patient, GENERAL_CONSENT_RESOURCE, "General Consent Document", "CONSENT")) {
+				uploaded++;
+			}
+
+			if (uploadOptionalDocument(patient, TREATMENT_PLAN_RESOURCE, "Treatment Plan Document", "REPORT")) {
+				uploaded++;
+			}
+		}
+
+		long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+		printRate("PDF document uploads", uploaded, elapsedMillis);
+
+		return uploaded;
+	}
+
+	private int resolveRandomProfileImageIndex() {
+		return profileImageRandom.nextInt(PROFILE_IMAGE_COUNT) + 1;
+	}
+
+	private String resolveProfileImageResourcePath(int imageIndex) {
+		return String.format(PROFILE_IMAGE_RESOURCE_PATTERN, imageIndex);
+	}
+
+	boolean uploadOptionalProfileImage(Person person) {
+		return uploadOptionalProfileImage(person, resolveRandomProfileImageIndex());
+	}
+
+	boolean uploadOptionalProfileImage(Person person, int imageIndex) {
+		if (person == null || person.getId() == null) {
+			System.out.println("[WARN] Profile image upload skipped because person is missing or not persisted.");
+			return false;
+		}
+
+		String resourcePath = resolveProfileImageResourcePath(imageIndex);
+		Resource resource = resourceLoader.getResource(resourcePath);
 
 		if (!resource.exists()) {
-			System.out.println("[SKIP] Optional profile image not found: src/main/resources/seed/profile-image.png");
-			return;
+			System.out.println("[SKIP] Optional profile image not found: "
+					+ resourcePath.replace("classpath:", "src/main/resources/"));
+			return false;
 		}
 
 		try {
-			MultipartFile file = multipartFromResource(resource, "profile-image.png", "image/png");
+			String fallbackFilename = String.format("profile-%02d.jpg", imageIndex);
+			MultipartFile file = multipartFromResource(resource, fallbackFilename, "image/jpeg");
 			String imageUrl = cloudinaryService.uploadProfileImage(file, person.getId());
-			person.setProfileImage(imageUrl);
-			entityManager.merge(person);
-			System.out.println("[OK] Uploaded profile image for person id: " + person.getId());
+
+			transactionTemplate.executeWithoutResult(status -> {
+				Person managedPerson = entityManager.find(Person.class, person.getId());
+
+				if (managedPerson != null) {
+					managedPerson.setProfileImage(imageUrl);
+					entityManager.merge(managedPerson);
+				}
+			});
+
+			System.out.println("[OK] Uploaded profile image " + fallbackFilename + " for person id: " + person.getId());
+			return true;
 		} catch (RuntimeException | IOException e) {
 			System.out.println("[WARN] Profile image upload skipped for person id: " + person.getId());
 			System.out.println("[WARN] " + e.getMessage());
+			return false;
 		}
 	}
 
-	private void uploadOptionalDocument(Patient patient, String resourcePath, String documentName, String documentType) {
+	boolean uploadOptionalDocument(Patient patient, String resourcePath, String documentName, String documentType) {
+		if (patient == null || patient.getId() == null) {
+			System.out.println("[WARN] Document upload skipped because patient is missing or not persisted.");
+			return false;
+		}
+
 		Resource resource = resourceLoader.getResource(resourcePath);
 
 		if (!resource.exists()) {
 			System.out.println(
 					"[SKIP] Optional document not found: " + resourcePath.replace("classpath:", "src/main/resources/"));
-			return;
+			return false;
 		}
 
 		try {
-			MultipartFile file = multipartFromResource(resource, resource.getFilename(), "application/pdf");
+			String fallbackFilename = resourcePath.contains("general-consent") ? "general-consent.pdf"
+					: "treatment-plan.pdf";
+
+			MultipartFile file = multipartFromResource(resource, fallbackFilename, "application/pdf");
 			String storagePath = supabaseStorageService.uploadPdf(file, "patients/" + patient.getId());
 
 			transactionTemplate.executeWithoutResult(status -> {
-				Document document = new Document(entityManager.find(Patient.class, patient.getId()), documentName,
-						storagePath, "application/pdf", documentType, true, "Seed document");
+				Patient managedPatient = entityManager.find(Patient.class, patient.getId());
+
+				if (managedPatient == null) {
+					throw new IllegalStateException("Patient not found for document upload: " + patient.getId());
+				}
+
+				Document document = new Document(managedPatient, documentName, storagePath, "application/pdf",
+						documentType, true, "Seed document");
 
 				entityManager.persist(document);
 				entityManager.flush();
@@ -911,14 +875,16 @@ public class ApplicationSeed {
 				}
 			});
 
-			System.out.println("[OK] Uploaded document for patient id: " + patient.getId());
+			System.out.println("[OK] Uploaded " + documentName + " for patient id: " + patient.getId());
+			return true;
 		} catch (RuntimeException | IOException e) {
 			System.out.println("[WARN] Document upload skipped for patient id: " + patient.getId());
 			System.out.println("[WARN] " + e.getMessage());
+			return false;
 		}
 	}
 
-	private MultipartFile multipartFromResource(Resource resource, String fallbackFilename, String contentType)
+	MultipartFile multipartFromResource(Resource resource, String fallbackFilename, String contentType)
 			throws IOException {
 		String filename = resource.getFilename() == null || resource.getFilename().isBlank() ? fallbackFilename
 				: resource.getFilename();
@@ -941,21 +907,21 @@ public class ApplicationSeed {
 		assertCondition(countEntities(DentalPieceState.class) >= 4, "Dental piece states were created");
 
 		try {
-			userService.login(new LoginRequest("admin@example.com", DEFAULT_PASSWORD));
+			userService.login(new LoginRequest("admin@dentalplus.demo", DEFAULT_PASSWORD));
 			System.out.println("[OK] Admin login works with Postman credentials.");
 		} catch (RuntimeException e) {
 			throw new IllegalStateException("Admin login diagnostic failed", e);
 		}
 
 		try {
-			userService.login(new LoginRequest("receptionist@example.com", DEFAULT_PASSWORD));
+			userService.login(new LoginRequest("reception@dentalplus.demo", DEFAULT_PASSWORD));
 			System.out.println("[OK] Receptionist login works with Postman credentials.");
 		} catch (RuntimeException e) {
 			throw new IllegalStateException("Receptionist login diagnostic failed", e);
 		}
 
 		try {
-			userService.login(new LoginRequest("dentist.primary@example.com", DEFAULT_PASSWORD));
+			userService.login(new LoginRequest("dentist.general@dentalplus.demo", DEFAULT_PASSWORD));
 			System.out.println("[OK] Dentist login works with Postman credentials.");
 		} catch (RuntimeException e) {
 			throw new IllegalStateException("Dentist login diagnostic failed", e);
@@ -980,69 +946,7 @@ public class ApplicationSeed {
 		System.out.println("[OK] Seed diagnostics completed.");
 	}
 
-	private void runPerformanceDiagnostics(SeedState seedState) {
-		System.out.println();
-		System.out.println("========== Performance Diagnostics ==========");
-
-		measureMillis("Admin login performance", () -> {
-			userService.login(new LoginRequest("admin@example.com", DEFAULT_PASSWORD));
-		});
-
-		measureMillis("Receptionist login performance", () -> {
-			userService.login(new LoginRequest("receptionist@example.com", DEFAULT_PASSWORD));
-		});
-
-		measureMillis("Primary dentist login performance", () -> {
-			userService.login(new LoginRequest("dentist.primary@example.com", DEFAULT_PASSWORD));
-		});
-
-		measureMillis("Admin appointment list by date", () -> {
-			appointmentService.getAppointments(seedState.admin().user().getId(), LocalDate.of(2026, 5, 5), null, null,
-					null);
-		});
-
-		measureMillis("Receptionist appointment list by date", () -> {
-			appointmentService.getAppointments(seedState.receptionist().user().getId(), LocalDate.of(2026, 5, 5), null,
-					null, null);
-		});
-
-		measureMillis("Primary dentist appointment list by date", () -> {
-			appointmentService.getAppointments(seedState.primaryDentist().user().getId(), LocalDate.of(2026, 5, 5),
-					null, null, null);
-		});
-
-		measureMillis("Admin availability by date and time", () -> {
-			appointmentService.getAvailability(seedState.admin().user().getId(), LocalDate.of(2026, 5, 5),
-					LocalTime.of(10, 0));
-		});
-
-		measureMillis("Receptionist availability by date and time", () -> {
-			appointmentService.getAvailability(seedState.receptionist().user().getId(), LocalDate.of(2026, 5, 5),
-					LocalTime.of(10, 0));
-		});
-
-		measureMillis("Primary dentist availability by date and time", () -> {
-			appointmentService.getAvailability(seedState.primaryDentist().user().getId(), LocalDate.of(2026, 5, 5),
-					LocalTime.of(10, 0));
-		});
-
-		measureMillis("Admin get base odontogram by patient", () -> {
-			odontogramService.getOdontogramByPatientId(seedState.patientOne().getId(), seedState.admin().user().getId());
-		});
-
-		if (!seedState.performancePatients().isEmpty() && !seedState.performanceOdontograms().isEmpty()) {
-			Patient performancePatient = seedState.performancePatients().get(0);
-
-			measureMillis("Admin get performance odontogram by patient", () -> {
-				odontogramService.getOdontogramByPatientId(performancePatient.getId(), seedState.admin().user().getId());
-			});
-		}
-
-		System.out.println("=============================================");
-		System.out.println();
-	}
-
-	private <T> Long countEntities(Class<T> entityClass) {
+	<T> Long countEntities(Class<T> entityClass) {
 		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 		CriteriaQuery<Long> cq = cb.createQuery(Long.class);
 		Root<T> root = cq.from(entityClass);
@@ -1091,7 +995,7 @@ public class ApplicationSeed {
 		System.out.println("tracked rows  = " + totalRows);
 
 		if (totalRows >= ROW_COUNT_DANGER_LIMIT) {
-			System.out.println("[WARN] Seed row count is high for a small database. Avoid increasing performance data.");
+			System.out.println("[WARN] Seed row count is high for a small database.");
 		} else if (totalRows >= ROW_COUNT_WARNING_LIMIT) {
 			System.out.println("[WARN] Seed row count is above the preferred light performance target.");
 		} else {
@@ -1114,12 +1018,12 @@ public class ApplicationSeed {
 		System.out.println("baseUrlLocal : http://localhost:8080");
 		System.out.println();
 		System.out.println("Login credentials:");
-		System.out.println("admin@example.com / " + DEFAULT_PASSWORD);
-		System.out.println("receptionist@example.com / " + DEFAULT_PASSWORD);
-		System.out.println("dentist.primary@example.com / " + DEFAULT_PASSWORD);
-		System.out.println("dentist.secondary@example.com / " + DEFAULT_PASSWORD);
+		System.out.println("admin@dentalplus.demo / " + DEFAULT_PASSWORD);
+		System.out.println("reception@dentalplus.demo / " + DEFAULT_PASSWORD);
+		System.out.println("dentist.general@dentalplus.demo / " + DEFAULT_PASSWORD);
+		System.out.println("dentist.surgery@dentalplus.demo / " + DEFAULT_PASSWORD);
 
-		if (SEED_MODE_PERFORMANCE_LIGHT.equals(seedMode)) {
+		if (isPerformanceOrStress(seedMode)) {
 			System.out.println();
 			System.out.println("Performance login examples:");
 
@@ -1153,7 +1057,7 @@ public class ApplicationSeed {
 		System.out.println("Patient 1 -> ALLERGY:PENICILLIN");
 		System.out.println("Patient 2 -> no medical alert");
 		System.out.println("Patient 3 -> INFECTION_RISK:HEPATITIS_B");
-		System.out.println("Patient 4 -> no medical alert");
+		System.out.println("Patient 4 -> BLEEDING_RISK:ANTICOAGULANTS");
 		System.out.println();
 		System.out.println("Seed appointment treatments:");
 		System.out.println("Appointment 1 -> Routine checkup");
@@ -1169,7 +1073,7 @@ public class ApplicationSeed {
 		System.out.println("Patient 4 / Piece 14 / MESIAL   -> FILLING / DONE");
 		System.out.println("Patient 4 / Piece 24 / DISTAL   -> CARIES / PENDING");
 
-		if (SEED_MODE_PERFORMANCE_LIGHT.equals(seedMode)) {
+		if (isPerformanceOrStress(seedMode)) {
 			System.out.println();
 			System.out.println("Performance dataset:");
 			System.out.println("Extra admins        = " + seedState.performanceAdmins().size());
@@ -1180,11 +1084,25 @@ public class ApplicationSeed {
 			System.out.println("Extra appointments  = " + seedState.performanceAppointments().size());
 		}
 
+		if (SEED_MODE_STRESS.equals(seedMode)) {
+			System.out.println();
+			System.out.println("Stress dataset:");
+			System.out.println("Stress patients      = " + seedState.stressPatients().size());
+			System.out.println("Stress odontograms   = " + seedState.stressOdontograms().size());
+			System.out.println("Stress appointments  = " + seedState.stressAppointments().size());
+		}
+
+		System.out.println();
+		System.out.println("External file targets:");
+		System.out.println("Persons with possible profile image = " + seedState.allPersons().size());
+		System.out.println("Patients with possible PDFs         = " + seedState.allPatients().size());
+		System.out.println("Expected patient PDFs               = " + (seedState.allPatients().size() * 2));
+
 		System.out.println("============================================");
 		System.out.println();
 	}
 
-	private void assertCondition(boolean condition, String message) {
+	void assertCondition(boolean condition, String message) {
 		if (!condition) {
 			throw new IllegalStateException("[FAIL] " + message);
 		}
@@ -1192,24 +1110,48 @@ public class ApplicationSeed {
 		System.out.println("[OK] " + message);
 	}
 
-	private <T> T persist(T entity) {
+	<T> T persist(T entity) {
 		entityManager.persist(entity);
 		return entity;
 	}
 
-	private record SeedState(Organization organization, Clinic clinic, CalendarRule clinicCalendarRule, Box boxOne,
+	TransactionTemplate transactionTemplate() {
+		return transactionTemplate;
+	}
+
+	UserService userService() {
+		return userService;
+	}
+
+	AppointmentService appointmentService() {
+		return appointmentService;
+	}
+
+	OdontogramService odontogramService() {
+		return odontogramService;
+	}
+
+	record SeedState(Organization organization, Clinic clinic, CalendarRule clinicCalendarRule, Box boxOne,
 			Box boxTwo, StaffSeed admin, StaffSeed receptionist, StaffSeed primaryDentist, StaffSeed secondaryDentist,
 			Patient patientOne, Patient patientTwo, Patient patientThree, Patient patientFour, Odontogram odontogramOne,
 			Appointment appointmentOne, List<StaffSeed> performanceAdmins, List<StaffSeed> performanceReceptionists,
 			List<StaffSeed> performanceDentists, List<Patient> performancePatients,
-			List<Odontogram> performanceOdontograms, List<Appointment> performanceAppointments) {
+			List<Odontogram> performanceOdontograms, List<Appointment> performanceAppointments,
+			List<Patient> stressPatients, List<Odontogram> stressOdontograms,
+			List<Appointment> stressAppointments, List<Person> allPersons, List<Patient> allPatients) {
 	}
 
-	private record PerformanceSeedData(List<StaffSeed> admins, List<StaffSeed> receptionists, List<StaffSeed> dentists,
+	record DemoSeedData(List<Patient> patients, List<Odontogram> odontograms, List<Appointment> appointments) {
+	}
+
+	record PerformanceSeedData(List<StaffSeed> admins, List<StaffSeed> receptionists, List<StaffSeed> dentists,
 			List<Patient> patients, List<Odontogram> odontograms, List<Appointment> appointments) {
 	}
 
-	private record StaffSeed(User user, Person person, Admin admin, Receptionist receptionist, Dentist dentist) {
+	record StressSeedData(List<Patient> patients, List<Odontogram> odontograms, List<Appointment> appointments) {
+	}
+
+	record StaffSeed(User user, Person person, Admin admin, Receptionist receptionist, Dentist dentist) {
 	}
 
 	private static class SeedMultipartFile implements MultipartFile {
