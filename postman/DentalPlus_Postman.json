@@ -54,21 +54,6 @@
           ],
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"identifier\": \"admin@example.com\",\n  \"password\": \"Password123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/user/login",
               "host": [
@@ -78,22 +63,27 @@
                 "user",
                 "login"
               ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"admin@dentalplus.demo\",\n  \"password\": \"Password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
         {
           "name": "Get Me",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/user/me",
@@ -104,12 +94,7 @@
                 "user",
                 "me"
               ]
-            }
-          }
-        },
-        {
-          "name": "Update Me - JSON",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -119,23 +104,13 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Update Me - JSON",
+          "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"admin\",\n  \"themePreference\": \"SYSTEM\",\n  \"languagePreference\": \"EN\",\n  \"person\": {\n    \"name\": \"Test\",\n    \"firstSurname\": \"User\",\n    \"secondSurname\": \"Sample\",\n    \"email\": \"admin@example.com\",\n    \"phonePrefix\": \"+1\",\n    \"phoneNumber\": \"0000000000\",\n    \"address\": \"Test Address\",\n    \"city\": \"Test City\",\n    \"notes\": \"Updated from Postman\"\n  }\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/user/me",
               "host": [
@@ -145,12 +120,7 @@
                 "user",
                 "me"
               ]
-            }
-          }
-        },
-        {
-          "name": "Update Me - Multipart With Profile Image",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -161,13 +131,53 @@
                 }
               ]
             },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"themePreference\": \"SYSTEM\",\n  \"languagePreference\": \"EN\",\n  \"person\": {\n    \"name\": \"Test\",\n    \"firstSurname\": \"User\",\n    \"secondSurname\": \"Sample\",\n    \"email\": \"admin@dentalplus.demo\",\n    \"phonePrefix\": \"+1\",\n    \"phoneNumber\": \"0000000000\",\n    \"address\": \"Test Address\",\n    \"city\": \"Test City\",\n    \"notes\": \"Updated from Postman\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Me - Multipart With Profile Image",
+          "request": {
             "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/user/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "user",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
                   "key": "profile",
-                  "value": "{\n  \"username\": \"admin\",\n  \"themePreference\": \"SYSTEM\",\n  \"languagePreference\": \"EN\",\n  \"person\": {\n    \"name\": \"Test\",\n    \"firstSurname\": \"User\",\n    \"secondSurname\": \"Sample\",\n    \"email\": \"admin@example.com\",\n    \"phonePrefix\": \"+1\",\n    \"phoneNumber\": \"0000000000\",\n    \"address\": \"Test Address\",\n    \"city\": \"Test City\",\n    \"notes\": \"Updated from Postman\"\n  }\n}",
+                  "value": "{\n  \"username\": \"admin\",\n  \"themePreference\": \"SYSTEM\",\n  \"languagePreference\": \"EN\",\n  \"person\": {\n    \"name\": \"Test\",\n    \"firstSurname\": \"User\",\n    \"secondSurname\": \"Sample\",\n    \"email\": \"admin@dentalplus.demo\",\n    \"phonePrefix\": \"+1\",\n    \"phoneNumber\": \"0000000000\",\n    \"address\": \"Test Address\",\n    \"city\": \"Test City\",\n    \"notes\": \"Updated from Postman\"\n  }\n}",
                   "type": "text",
                   "contentType": "application/json"
                 },
@@ -182,7 +192,13 @@
                   "type": "text"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Remove My Profile Image",
+          "request": {
+            "method": "PUT",
             "url": {
               "raw": "{{baseUrl}}/user/me",
               "host": [
@@ -192,12 +208,7 @@
                 "user",
                 "me"
               ]
-            }
-          }
-        },
-        {
-          "name": "Remove My Profile Image",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -208,13 +219,12 @@
                 }
               ]
             },
-            "method": "PUT",
             "body": {
               "mode": "formdata",
               "formdata": [
                 {
                   "key": "profile",
-                  "value": "{\n  \"username\": \"admin\",\n  \"themePreference\": \"SYSTEM\",\n  \"languagePreference\": \"EN\",\n  \"person\": {\n    \"name\": \"Test\",\n    \"firstSurname\": \"User\",\n    \"secondSurname\": \"Sample\",\n    \"email\": \"admin@example.com\",\n    \"phonePrefix\": \"+1\",\n    \"phoneNumber\": \"0000000000\",\n    \"address\": \"Test Address\",\n    \"city\": \"Test City\",\n    \"notes\": \"Updated from Postman\"\n  }\n}",
+                  "value": "{\n  \"username\": \"admin\",\n  \"themePreference\": \"SYSTEM\",\n  \"languagePreference\": \"EN\",\n  \"person\": {\n    \"name\": \"Test\",\n    \"firstSurname\": \"User\",\n    \"secondSurname\": \"Sample\",\n    \"email\": \"admin@dentalplus.demo\",\n    \"phonePrefix\": \"+1\",\n    \"phoneNumber\": \"0000000000\",\n    \"address\": \"Test Address\",\n    \"city\": \"Test City\",\n    \"notes\": \"Updated from Postman\"\n  }\n}",
                   "type": "text",
                   "contentType": "application/json"
                 },
@@ -223,16 +233,6 @@
                   "value": "true",
                   "type": "text"
                 }
-              ]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/user/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "user",
-                "me"
               ]
             }
           }
@@ -245,16 +245,6 @@
         {
           "name": "Get Patients",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient",
@@ -264,12 +254,7 @@
               "path": [
                 "patient"
               ]
-            }
-          }
-        },
-        {
-          "name": "Search Patients",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -279,7 +264,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Search Patients",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient?search=test",
@@ -295,12 +285,7 @@
                   "value": "test"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Patient By Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -310,7 +295,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Patient By Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/1",
@@ -321,12 +311,32 @@
                 "patient",
                 "1"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
         {
           "name": "Create Patient",
           "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/patient",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient"
+              ]
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -337,7 +347,6 @@
                 }
               ]
             },
-            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -352,21 +361,23 @@
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/patient",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "patient"
-              ]
             }
           }
         },
         {
           "name": "Update Patient",
           "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/patient/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "1"
+              ]
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -377,7 +388,6 @@
                 }
               ]
             },
-            "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
@@ -392,16 +402,6 @@
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/patient/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "patient",
-                "1"
-              ]
             }
           }
         }
@@ -413,16 +413,6 @@
         {
           "name": "Get Appointments",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/appointment",
@@ -432,12 +422,7 @@
               "path": [
                 "appointment"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Appointments With Filters",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -447,10 +432,15 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Appointments With Filters",
+          "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/appointment?date=2026-05-01&patientId=1&dentistId=1&boxId=1",
+              "raw": "{{baseUrl}}/appointment?date=2026-06-01&patientId=1&dentistId=1&boxId=1",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -460,7 +450,7 @@
               "query": [
                 {
                   "key": "date",
-                  "value": "2026-05-01"
+                  "value": "2026-06-01"
                 },
                 {
                   "key": "patientId",
@@ -475,12 +465,7 @@
                   "value": "1"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Appointment By Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -490,7 +475,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Appointment By Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/appointment/1",
@@ -501,12 +491,7 @@
                 "appointment",
                 "1"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Availability By Date",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -516,10 +501,15 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Availability By Date",
+          "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/appointment/availability?date=2026-05-01",
+              "raw": "{{baseUrl}}/appointment/availability?date=2026-06-01",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -530,7 +520,17 @@
               "query": [
                 {
                   "key": "date",
-                  "value": "2026-05-01"
+                  "value": "2026-06-01"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
                 }
               ]
             }
@@ -539,19 +539,9 @@
         {
           "name": "Get Availability By Date And Time",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/appointment/availability?date=2026-05-01&time=10:00",
+              "raw": "{{baseUrl}}/appointment/availability?date=2026-06-01&time=10:00",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -562,11 +552,21 @@
               "query": [
                 {
                   "key": "date",
-                  "value": "2026-05-01"
+                  "value": "2026-06-01"
                 },
                 {
                   "key": "time",
                   "value": "10:00"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
                 }
               ]
             }
@@ -575,32 +575,7 @@
         {
           "name": "Create Appointment",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"treatment\": \"Dental cleaning\",\n  \"startDateTime\": \"2026-05-01T10:00:00\",\n  \"endDateTime\": \"2026-05-01T10:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment created from Postman\",\n  \"active\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/appointment",
               "host": [
@@ -609,12 +584,7 @@
               "path": [
                 "appointment"
               ]
-            }
-          }
-        },
-        {
-          "name": "Update Appointment",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -625,7 +595,6 @@
                 }
               ]
             },
-            "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
@@ -634,13 +603,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"treatment\": \"Updated dental treatment\",\n  \"startDateTime\": \"2026-05-01T11:00:00\",\n  \"endDateTime\": \"2026-05-01T11:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment updated from Postman\",\n  \"active\": true\n}",
+              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"treatment\": \"Dental cleaning\",\n  \"startDateTime\": \"2026-06-01T10:00:00\",\n  \"endDateTime\": \"2026-06-01T10:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment created from Postman\",\n  \"active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
+            }
+          }
+        },
+        {
+          "name": "Update Appointment",
+          "request": {
+            "method": "PUT",
             "url": {
               "raw": "{{baseUrl}}/appointment/1",
               "host": [
@@ -650,12 +625,7 @@
                 "appointment",
                 "1"
               ]
-            }
-          }
-        },
-        {
-          "name": "Delete Appointment",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -666,6 +636,26 @@
                 }
               ]
             },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boxId\": 1,\n  \"dentistId\": 1,\n  \"patientId\": 1,\n  \"treatment\": \"Updated dental treatment\",\n  \"startDateTime\": \"2026-06-01T11:00:00\",\n  \"endDateTime\": \"2026-06-01T11:30:00\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"Routine appointment updated from Postman\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Appointment",
+          "request": {
             "method": "DELETE",
             "url": {
               "raw": "{{baseUrl}}/appointment/1",
@@ -675,6 +665,16 @@
               "path": [
                 "appointment",
                 "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
               ]
             }
           }
@@ -687,16 +687,6 @@
         {
           "name": "Get Documents By Patient",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/document/patient/1",
@@ -708,12 +698,34 @@
                 "patient",
                 "1"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
         {
           "name": "Upload Document PDF",
           "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/document/patient/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "document",
+                "patient",
+                "1"
+              ]
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -724,7 +736,6 @@
                 }
               ]
             },
-            "method": "POST",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -749,33 +760,12 @@
                   "type": "text"
                 }
               ]
-            },
-            "url": {
-              "raw": "{{baseUrl}}/document/patient/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "document",
-                "patient",
-                "1"
-              ]
             }
           }
         },
         {
           "name": "Delete Document",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
             "url": {
               "raw": "{{baseUrl}}/document/1",
@@ -785,6 +775,16 @@
               "path": [
                 "document",
                 "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
               ]
             }
           }
@@ -797,16 +797,6 @@
         {
           "name": "Create Odontogram By Patient Id",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "POST",
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram",
@@ -818,12 +808,7 @@
                 "1",
                 "odontogram"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Odontogram By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -833,7 +818,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Odontogram By Patient Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram",
@@ -845,12 +835,7 @@
                 "1",
                 "odontogram"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Odontogram By Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -860,7 +845,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Odontogram By Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1",
@@ -872,12 +862,7 @@
                 "odontogram",
                 "1"
               ]
-            }
-          }
-        },
-        {
-          "name": "Update View Mode By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -887,23 +872,13 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Update View Mode By Patient Id",
+          "request": {
             "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"viewMode\": \"MIXED\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/view-mode",
               "host": [
@@ -915,12 +890,7 @@
                 "odontogram",
                 "view-mode"
               ]
-            }
-          }
-        },
-        {
-          "name": "Update View Mode By Odontogram Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -931,7 +901,6 @@
                 }
               ]
             },
-            "method": "PUT",
             "header": [
               {
                 "key": "Content-Type",
@@ -946,7 +915,13 @@
                   "language": "json"
                 }
               }
-            },
+            }
+          }
+        },
+        {
+          "name": "Update View Mode By Odontogram Id",
+          "request": {
+            "method": "PUT",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/view-mode",
               "host": [
@@ -958,12 +933,7 @@
                 "1",
                 "view-mode"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Piece By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -974,6 +944,26 @@
                 }
               ]
             },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"viewMode\": \"MIXED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Piece By Patient Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/piece/11",
@@ -987,12 +977,7 @@
                 "piece",
                 "11"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Piece By Odontogram Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1002,7 +987,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Piece By Odontogram Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/piece/11",
@@ -1016,12 +1006,7 @@
                 "piece",
                 "11"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Piece States By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1031,7 +1016,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Piece States By Patient Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/piece/11/state",
@@ -1045,6 +1035,16 @@
                 "piece",
                 "11",
                 "state"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
               ]
             }
           }
@@ -1052,16 +1052,6 @@
         {
           "name": "Get Piece States By Odontogram Id",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/piece/11/state",
@@ -1076,12 +1066,7 @@
                 "11",
                 "state"
               ]
-            }
-          }
-        },
-        {
-          "name": "Create Piece State By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1091,23 +1076,13 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Create Piece State By Patient Id",
+          "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"stateType\": \"HEALTHY\",\n  \"notes\": \"Created from Postman\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/piece/11/state",
               "host": [
@@ -1121,12 +1096,7 @@
                 "11",
                 "state"
               ]
-            }
-          }
-        },
-        {
-          "name": "Create Piece State By Odontogram Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1137,7 +1107,6 @@
                 }
               ]
             },
-            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -1152,7 +1121,13 @@
                   "language": "json"
                 }
               }
-            },
+            }
+          }
+        },
+        {
+          "name": "Create Piece State By Odontogram Id",
+          "request": {
+            "method": "POST",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/piece/11/state",
               "host": [
@@ -1166,12 +1141,7 @@
                 "11",
                 "state"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Surface By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1182,6 +1152,26 @@
                 }
               ]
             },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateType\": \"HEALTHY\",\n  \"notes\": \"Created from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Surface By Patient Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/piece/11/surface/MESIAL",
@@ -1197,12 +1187,7 @@
                 "surface",
                 "MESIAL"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Surface By Odontogram Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1212,7 +1197,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Surface By Odontogram Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/piece/11/surface/MESIAL",
@@ -1228,12 +1218,7 @@
                 "surface",
                 "MESIAL"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Surface Marks By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1243,7 +1228,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Surface Marks By Patient Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/piece/11/surface/MESIAL/mark",
@@ -1259,6 +1249,16 @@
                 "surface",
                 "MESIAL",
                 "mark"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
               ]
             }
           }
@@ -1266,16 +1266,6 @@
         {
           "name": "Get Surface Marks By Odontogram Id",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/piece/11/surface/MESIAL/mark",
@@ -1292,12 +1282,7 @@
                 "MESIAL",
                 "mark"
               ]
-            }
-          }
-        },
-        {
-          "name": "Create Surface Mark By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1307,23 +1292,13 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Create Surface Mark By Patient Id",
+          "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"markType\": \"CARIES\",\n  \"markState\": \"PENDING\",\n  \"notes\": \"Created from Postman\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/piece/11/surface/MESIAL/mark",
               "host": [
@@ -1339,12 +1314,7 @@
                 "MESIAL",
                 "mark"
               ]
-            }
-          }
-        },
-        {
-          "name": "Create Surface Mark By Odontogram Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1355,7 +1325,6 @@
                 }
               ]
             },
-            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -1370,7 +1339,13 @@
                   "language": "json"
                 }
               }
-            },
+            }
+          }
+        },
+        {
+          "name": "Create Surface Mark By Odontogram Id",
+          "request": {
+            "method": "POST",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/piece/11/surface/MESIAL/mark",
               "host": [
@@ -1386,12 +1361,7 @@
                 "MESIAL",
                 "mark"
               ]
-            }
-          }
-        },
-        {
-          "name": "Update Surface Mark",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1402,7 +1372,49 @@
                 }
               ]
             },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"markType\": \"CARIES\",\n  \"markState\": \"PENDING\",\n  \"notes\": \"Created from Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Surface Mark",
+          "request": {
             "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/patient/odontogram/mark/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "odontogram",
+                "mark",
+                "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -1417,34 +1429,12 @@
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/patient/odontogram/mark/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "patient",
-                "odontogram",
-                "mark",
-                "1"
-              ]
             }
           }
         },
         {
           "name": "Deactivate Surface Mark",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/mark/1",
@@ -1457,12 +1447,7 @@
                 "mark",
                 "1"
               ]
-            }
-          }
-        },
-        {
-          "name": "Get Bridges By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1472,7 +1457,12 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Get Bridges By Patient Id",
+          "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/bridge",
@@ -1484,6 +1474,16 @@
                 "1",
                 "odontogram",
                 "bridge"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
               ]
             }
           }
@@ -1491,16 +1491,6 @@
         {
           "name": "Get Bridges By Odontogram Id",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/bridge",
@@ -1513,12 +1503,7 @@
                 "1",
                 "bridge"
               ]
-            }
-          }
-        },
-        {
-          "name": "Create Bridge By Patient Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1528,23 +1513,13 @@
                   "type": "string"
                 }
               ]
-            },
+            }
+          }
+        },
+        {
+          "name": "Create Bridge By Patient Id",
+          "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"bridgeState\": \"PENDING\",\n  \"notes\": \"Created from Postman\",\n  \"pieces\": [\n    {\n      \"pieceNumber\": 14,\n      \"pieceRole\": \"ABUTMENT\"\n    },\n    {\n      \"pieceNumber\": 15,\n      \"pieceRole\": \"PONTIC\"\n    },\n    {\n      \"pieceNumber\": 16,\n      \"pieceRole\": \"ABUTMENT\"\n    }\n  ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{baseUrl}}/patient/1/odontogram/bridge",
               "host": [
@@ -1556,12 +1531,7 @@
                 "odontogram",
                 "bridge"
               ]
-            }
-          }
-        },
-        {
-          "name": "Create Bridge By Odontogram Id",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1572,7 +1542,6 @@
                 }
               ]
             },
-            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -1587,7 +1556,13 @@
                   "language": "json"
                 }
               }
-            },
+            }
+          }
+        },
+        {
+          "name": "Create Bridge By Odontogram Id",
+          "request": {
+            "method": "POST",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/1/bridge",
               "host": [
@@ -1599,12 +1574,7 @@
                 "1",
                 "bridge"
               ]
-            }
-          }
-        },
-        {
-          "name": "Update Bridge",
-          "request": {
+            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1615,7 +1585,49 @@
                 }
               ]
             },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bridgeState\": \"PENDING\",\n  \"notes\": \"Created from Postman\",\n  \"pieces\": [\n    {\n      \"pieceNumber\": 14,\n      \"pieceRole\": \"ABUTMENT\"\n    },\n    {\n      \"pieceNumber\": 15,\n      \"pieceRole\": \"PONTIC\"\n    },\n    {\n      \"pieceNumber\": 16,\n      \"pieceRole\": \"ABUTMENT\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Bridge",
+          "request": {
             "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/patient/odontogram/bridge/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patient",
+                "odontogram",
+                "bridge",
+                "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -1630,34 +1642,12 @@
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/patient/odontogram/bridge/1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "patient",
-                "odontogram",
-                "bridge",
-                "1"
-              ]
             }
           }
         },
         {
           "name": "Deactivate Bridge",
           "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
             "method": "DELETE",
             "url": {
               "raw": "{{baseUrl}}/patient/odontogram/bridge/1",
@@ -1669,6 +1659,16 @@
                 "odontogram",
                 "bridge",
                 "1"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
               ]
             }
           }

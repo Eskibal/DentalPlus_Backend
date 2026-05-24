@@ -27,14 +27,16 @@ Este README está pensado para dos tipos de lector:
 11. [Servicios externos: Cloudinary y Supabase](#servicios-externos-cloudinary-y-supabase)
 12. [Endpoints disponibles](#endpoints-disponibles)
 13. [Ejemplos de requests y responses](#ejemplos-de-requests-y-responses)
-14. [Odontograma](#odontograma)
-15. [Seed de datos](#seed-de-datos)
-16. [Postman](#postman)
-17. [Tests](#tests)
-18. [Cómo modificar partes importantes](#cómo-modificar-partes-importantes)
-19. [Errores comunes y depuración](#errores-comunes-y-depuración)
-20. [Diagramas Mermaid](#diagramas-mermaid)
-21. [Checklist antes de subir cambios](#checklist-antes-de-subir-cambios)
+14. [DTOs principales](#dtos-principales)
+15. [Odontograma](#odontograma)
+16. [Seed de datos](#seed-de-datos)
+17. [Postman](#postman)
+18. [Tests](#tests)
+19. [Cómo modificar partes importantes](#cómo-modificar-partes-importantes)
+20. [Errores comunes y depuración](#errores-comunes-y-depuración)
+21. [Diagramas Mermaid](#diagramas-mermaid)
+22. [Checklist antes de subir cambios](#checklist-antes-de-subir-cambios)
+23. [Notas pendientes de confirmar](#notas-pendientes-de-confirmar)
 
 ---
 
@@ -56,7 +58,7 @@ Funcionalidades principales detectadas en el código:
 - Documentos PDF de pacientes.
 - Imágenes de perfil con Cloudinary.
 - Documentos con Supabase Storage.
-- Seed destructivo para datos demo.
+- Seed destructivo con modos demo, rendimiento y estrés.
 - Colección Postman lista para probar la API.
 - Dockerfile para despliegue.
 
@@ -84,7 +86,7 @@ Controller -> Service -> DAO -> DAO Impl Hibernate -> Model/Entity -> Database
 | DTO | `dto/` | Define los objetos que entran y salen por la API. |
 | Model | `model/` | Entidades JPA y validaciones de dominio. |
 | Config | `config/` | Seguridad, JWT, Cloudinary y Supabase. |
-| Seed | `seed/` | Carga de datos demo y limpieza destructiva. |
+| Seed | `seed/` | Carga de datos demo, rendimiento, estrés y limpieza destructiva. |
 
 ### Importante
 
@@ -96,8 +98,8 @@ Este backend **no usa únicamente Spring Data Repository**. Tiene interfaces DAO
 
 | Tecnología | Uso |
 |---|---|
-| Java 17 | Versión configurada en `pom.xml`. |
-| Spring Boot | Framework principal. |
+| Java 21 | Versión usada actualmente en ejecución local y Docker. |
+| Spring Boot 4.0.3 | Framework principal del backend. |
 | Spring Web / WebMVC | API REST. |
 | Spring Security | Protección de endpoints y filtro JWT. |
 | JPA / Hibernate | Persistencia. |
@@ -112,7 +114,7 @@ Este backend **no usa únicamente Spring Data Repository**. Tiene interfaces DAO
 | Postman | Pruebas manuales de endpoints. |
 
 > **Nota sobre Java**  
-> `pom.xml` configura Java 17, pero el `Dockerfile` usa `eclipse-temurin:21-jdk`. Actualmente puede funcionar porque Java 21 puede ejecutar código compilado para Java 17, pero conviene unificar la versión para evitar confusión.
+> El proyecto se está ejecutando actualmente con Java 21. Conviene mantener alineados `pom.xml`, entorno local y `Dockerfile` para evitar diferencias entre desarrollo y despliegue.
 
 ---
 
@@ -142,8 +144,12 @@ DentalPlus_Backend/
 │   │       ├── application.properties
 │   │       └── seed/
 │   │           ├── general-consent.pdf
-│   │           ├── profile-image.png
-│   │           └── treatment-plan.pdf
+│   │           ├── treatment-plan.pdf
+│   │           └── profile-images/
+│   │               ├── profile-01.jpg
+│   │               ├── profile-02.jpg
+│   │               ├── ...
+│   │               └── profile-50.jpg
 │   └── test/
 │       ├── java/com/example/DentalPlus_Backend/ApplicationTest.java
 │       └── resources/application-test.properties
@@ -165,7 +171,8 @@ DentalPlus_Backend/
 | `OdontogramController` | Odontogramas, piezas, superficies, marcas y puentes. |
 | `CloudinaryService` | Subida y eliminación de imágenes de perfil. |
 | `SupabaseStorageService` | Subida y eliminación de PDFs. |
-| `ApplicationSeed` | Seed destructivo de datos demo. |
+| `ApplicationSeed` | Seed destructivo y menú principal de carga de datos. |
+| `StressSeed` | Generación masiva de pacientes, odontogramas y citas para prueba de estrés. |
 
 ---
 
@@ -231,7 +238,7 @@ $env:AUTH_TOKEN_EXPIRATION_MS="604800000"
 
 ### Requisitos
 
-- Java compatible con el proyecto. Recomendado: Java 17 o superior.
+- Java compatible con el proyecto. Recomendado: Java 21.
 - Maven, o usar el Maven Wrapper incluido (`mvnw` / `mvnw.cmd`).
 - Acceso a una base de datos MySQL.
 - Variables de entorno configuradas para DB, JWT, Cloudinary y Supabase si vas a probar funcionalidades completas.
@@ -323,13 +330,14 @@ CMD ["java", "-jar", "target/DentalPlus_Backend-0.0.1-SNAPSHOT.jar"]
 
 El proyecto usa MySQL mediante JPA/Hibernate.
 
-Configuración relevante:
+Configuración recomendada para desarrollo normal:
 
 ```properties
 spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+spring.jpa.show-sql=false
 ```
+
+Durante pruebas de rendimiento o estrés, `spring.jpa.show-sql` debe estar en `false`. Si está en `true`, Hibernate imprime cada consulta SQL en consola y ralentiza mucho la carga masiva de datos.
 
 ### Qué significa `ddl-auto=update`
 
@@ -349,7 +357,6 @@ spring.jpa.hibernate.ddl-auto=validate
 ```
 
 o usar migraciones controladas con Flyway/Liquibase.
-
 
 ### Desincronización entre entidades Java y esquema MySQL
 
@@ -406,7 +413,7 @@ Body:
 
 ```json
 {
-  "identifier": "admin@example.com",
+  "identifier": "admin@dentalplus.demo",
   "password": "Password123"
 }
 ```
@@ -423,7 +430,7 @@ Respuesta esperada:
     "active": true,
     "person": {
       "name": "Admin",
-      "email": "admin@example.com"
+      "email": "admin@dentalplus.demo"
     },
     "roles": [
       {
@@ -462,10 +469,11 @@ const response = await fetch(`${baseUrl}/patient`, {
 
 ### Cómo usar el token en Postman
 
-1. Ejecuta `POST /user/login`.
-2. Copia el valor de `token`.
-3. Guárdalo en la variable `authToken` de la colección.
-4. Usa autorización tipo `Bearer Token` o header manual:
+1. Ejecuta `UserController / Login`.
+2. Si la respuesta contiene el token, la colección lo guarda automáticamente en `authToken`.
+3. Ejecuta el resto de endpoints protegidos.
+
+También puedes usar autorización tipo `Bearer Token` o header manual:
 
 ```http
 Authorization: Bearer {{authToken}}
@@ -701,7 +709,7 @@ Content-Type: application/json
 
 ```json
 {
-  "identifier": "admin@example.com",
+  "identifier": "admin@dentalplus.demo",
   "password": "Password123"
 }
 ```
@@ -722,7 +730,7 @@ Response orientativa:
       "id": 1,
       "name": "Admin",
       "firstSurname": "User",
-      "email": "admin@example.com"
+      "email": "admin@dentalplus.demo"
     },
     "roles": [
       {
@@ -802,8 +810,9 @@ Content-Type: application/json
   "boxId": 1,
   "dentistId": 1,
   "patientId": 1,
-  "startDateTime": "2026-05-01T10:00:00",
-  "endDateTime": "2026-05-01T10:30:00",
+  "treatment": "Dental cleaning",
+  "startDateTime": "2026-06-01T10:00:00",
+  "endDateTime": "2026-06-01T10:30:00",
   "status": "SCHEDULED",
   "notes": "Routine appointment created from Postman",
   "active": true
@@ -813,7 +822,7 @@ Content-Type: application/json
 ### Consultar disponibilidad
 
 ```http
-GET /appointment/availability?date=2026-05-01&time=10:00
+GET /appointment/availability?date=2026-06-01&time=10:00
 Authorization: Bearer <token>
 ```
 
@@ -881,9 +890,9 @@ Content-Type: multipart/form-data
 Campos:
 
 ```text
-profile: JSON de ProfileDto
-profileImage: archivo opcional
-removeProfileImage: true/false
+profile
+profileImage
+removeProfileImage
 ```
 
 Ejemplo de `profile`:
@@ -897,7 +906,7 @@ Ejemplo de `profile`:
     "name": "Test",
     "firstSurname": "User",
     "secondSurname": "Sample",
-    "email": "admin@example.com",
+    "email": "admin@dentalplus.demo",
     "phonePrefix": "+1",
     "phoneNumber": "0000000000",
     "address": "Test Address",
@@ -1028,6 +1037,7 @@ Content-Type: application/json
 | `clinicName` | `String` |
 | `registrationDate` | `LocalDate` |
 | `active` | `Boolean` |
+| `medicalAlert` | `String` |
 | `notes` | `String` |
 | `person` | `PersonDto` |
 | `documents` | `List<DocumentDto>` |
@@ -1043,6 +1053,7 @@ Content-Type: application/json
 | `dentistName` | `String` |
 | `patientId` | `Long` |
 | `patientName` | `String` |
+| `treatment` | `String` |
 | `startDateTime` | `LocalDateTime` |
 | `endDateTime` | `LocalDateTime` |
 | `status` | `String` |
@@ -1116,7 +1127,7 @@ LINGUAL
 OCCLUSAL
 ```
 
-Nota: `OCCLUSAL` solo aplica a piezas posteriores según la validación de `DentalSurface`.
+Nota: `OCCLUSAL` solo aplica a piezas posteriores según la validación de `DentalSurface`. El modelo actual no usa `PALATAL`; para esa zona se utiliza `LINGUAL`.
 
 #### `stateType`
 
@@ -1131,6 +1142,10 @@ ENDODONTICS_PENDING
 ENDODONTICS_DONE
 BRIDGE_PENDING
 BRIDGE_DONE
+FILLING_PENDING
+FILLING_DONE
+PERIODONTAL_TREATMENT_PENDING
+PERIODONTAL_TREATMENT_DONE
 UNKNOWN
 ```
 
@@ -1190,12 +1205,18 @@ El seed está en:
 src/main/java/com/example/DentalPlus_Backend/seed/ApplicationSeed.java
 ```
 
+También participa:
+
+```text
+src/main/java/com/example/DentalPlus_Backend/seed/StressSeed.java
+```
+
 Recursos usados:
 
 ```text
 src/main/resources/seed/general-consent.pdf
 src/main/resources/seed/treatment-plan.pdf
-src/main/resources/seed/profile-image.png
+src/main/resources/seed/profile-images/
 ```
 
 ### Advertencia
@@ -1209,15 +1230,7 @@ Antes de ejecutarlo, revisa que estás conectado a una base de datos de desarrol
 
 `ApplicationSeed` tiene método `main`, por lo que puede ejecutarse desde el IDE como clase Java.
 
-Pendiente de confirmar: comando Maven oficial recomendado para ejecutarlo por consola en este proyecto.
-
-Ejemplo orientativo con Maven, si se configura adecuadamente el main class:
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.main-class=com.example.DentalPlus_Backend.seed.ApplicationSeed
-```
-
-Si este comando no funciona en tu entorno, ejecútalo desde Eclipse/IntelliJ abriendo `ApplicationSeed` y lanzando su método `main`.
+La forma recomendada actualmente es ejecutar `ApplicationSeed` desde el IDE usando su método `main`, ya que el seed pide confirmación interactiva por consola.
 
 ### Confirmación requerida
 
@@ -1227,35 +1240,156 @@ El seed pide escribir exactamente:
 SEED
 ```
 
-Después pregunta si quieres mantener los datos generados.
+Después permite elegir el modo de carga:
 
-### Usuarios demo detectados
+```text
+1. DEMO - small realistic dataset for Postman/frontend
+2. PERFORMANCE_LIGHT - demo + controlled performance data
+3. STRESS - demo + performance + massive stress data
+```
+
+Al final pregunta si quieres mantener los datos generados o limpiar la base.
+
+### Modos disponibles
+
+| Modo | Descripción |
+|---|---|
+| `DEMO` | Carga un dataset pequeño y realista para probar frontend/Postman. |
+| `PERFORMANCE_LIGHT` | Carga demo + datos controlados para pruebas de rendimiento. |
+| `STRESS` | Carga demo + rendimiento + datos masivos para prueba de estrés. |
+
+Todos los modos pueden subir imágenes de perfil y documentos PDF si los recursos existen en `src/main/resources/seed`.
+
+### Datos generados por modo
+
+#### DEMO
+
+Incluye datos base:
+
+- organización;
+- clínica;
+- boxes;
+- administradores;
+- recepcionistas;
+- dentistas;
+- pacientes demo;
+- citas demo;
+- odontogramas demo;
+- marcas dentales;
+- documentos PDF;
+- imágenes de perfil.
+
+#### PERFORMANCE_LIGHT
+
+Añade al modo demo:
+
+| Tipo | Cantidad extra |
+|---|---:|
+| Admins | 2 |
+| Recepcionistas | 3 |
+| Dentistas | 6 |
+| Pacientes | 30 |
+| Odontogramas | 4 |
+| Citas | 80 |
+
+#### STRESS
+
+Añade al modo performance:
+
+| Tipo | Cantidad extra |
+|---|---:|
+| Pacientes stress | 1000 |
+| Odontogramas stress | 50 |
+| Citas stress | 5000 |
+
+Además, en la prueba actual se suben:
+
+| Archivo externo | Cantidad esperada |
+|---|---:|
+| Imágenes de perfil | 1049 |
+| PDFs de pacientes | 2068 |
+
+Cada paciente recibe dos documentos PDF:
+
+- `General Consent Document`
+- `Treatment Plan Document`
+
+### Usuarios demo
 
 | Usuario | Contraseña |
 |---|---|
-| `admin@example.com` | `Password123` |
-| `receptionist@example.com` | `Password123` |
-| `dentist.primary@example.com` | `Password123` |
-| `dentist.secondary@example.com` | `Password123` |
+| `admin@dentalplus.demo` | `Password123` |
+| `reception@dentalplus.demo` | `Password123` |
+| `dentist.general@dentalplus.demo` | `Password123` |
+| `dentist.surgery@dentalplus.demo` | `Password123` |
+
+Usuarios de rendimiento disponibles:
+
+| Usuario | Contraseña |
+|---|---|
+| `admin.perf.01@example.com` | `Password123` |
+| `receptionist.perf.01@example.com` | `Password123` |
+| `dentist.perf.01@example.com` | `Password123` |
 
 El seed indica que los pacientes demo no tienen login habilitado.
 
 ### IDs por defecto para Postman
 
-El seed imprime valores por defecto como:
+La colección Postman usa directamente los IDs base generados por el seed:
 
-```text
-patientId
-odontogramId
-dentistId
-boxId
-appointmentId
-documentId
-pieceNumber = 11
-surfaceType = MESIAL
-```
+| Valor | ID usado |
+|---|---:|
+| Paciente base | `1` |
+| Odontograma base | `1` |
+| Dentista base | `1` |
+| Box base | `1` |
+| Cita base | `1` |
+| Documento base | `1` |
+| Pieza dental de ejemplo | `11` |
+| Superficie de ejemplo | `MESIAL` |
 
-Usa esos IDs en Postman para probar endpoints.
+No se usan variables de colección para estos IDs porque el objetivo es que la colección funcione rápido después de ejecutar el seed.
+
+### Resultado real de la prueba de estrés
+
+En la última ejecución completa del modo `STRESS`, el sistema generó correctamente:
+
+| Métrica | Resultado |
+|---|---:|
+| Usuarios | 15 |
+| Personas | 1049 |
+| Admins | 3 |
+| Recepcionistas | 4 |
+| Dentistas | 8 |
+| Pacientes | 1034 |
+| Citas | 5083 |
+| Odontogramas | 58 |
+| Piezas dentales | 3016 |
+| Estados de piezas | 3069 |
+| Superficies dentales | 13688 |
+| Marcas dentales | 112 |
+| Documentos PDF registrados | 2067 |
+| Filas controladas aproximadas | 29206 |
+
+También se completaron los diagnósticos funcionales y de rendimiento:
+
+| Diagnóstico | Resultado aproximado |
+|---|---:|
+| Login admin | 749 ms |
+| Login recepcionista | 855 ms |
+| Login dentista | 713 ms |
+| Listado de citas admin | 591 ms |
+| Disponibilidad admin | 1534 ms |
+| Odontograma base admin | 3180 ms |
+| Odontograma performance admin | 3029 ms |
+| Odontograma stress inicial | 3390 ms |
+| Odontograma stress intermedio | 3162 ms |
+| Odontograma stress final | 3121 ms |
+| Listado de citas stress por fecha | 407 ms |
+
+La prueba se considera satisfactoria porque el seed masivo finalizó, los datos principales fueron persistidos, las imágenes de perfil se subieron correctamente y los diagnósticos de acceso siguieron funcionando con el volumen generado.
+
+Observación: de 2068 PDFs esperados, se registraron 2067. Hubo un fallo puntual de subida a Supabase para un documento, pero el proceso continuó correctamente. Esto debe mencionarse como incidencia menor de almacenamiento externo, no como fallo general de la base de datos ni de la prueba de estrés.
 
 ---
 
@@ -1280,13 +1414,14 @@ Variables detectadas:
 ### Flujo recomendado
 
 1. Importa `postman/DentalPlus_Postman.json`.
-2. Selecciona entorno o variables de colección.
-3. Ajusta `baseUrl`:
+2. Ajusta `baseUrl`:
    - local: `http://localhost:8080`
    - Render: `https://dentalplus-backend.onrender.com`
-4. Ejecuta `UserController / Login`.
-5. Copia el token en `authToken`.
-6. Ejecuta el resto de endpoints.
+3. Ejecuta `UserController / Login`.
+4. Si la respuesta contiene el token, la colección lo guarda automáticamente en `authToken`.
+5. Ejecuta el resto de endpoints protegidos.
+
+La colección no usa variables para IDs fijos como `patientId`, `odontogramId`, `dentistId` o `boxId`. Los endpoints de ejemplo usan directamente los IDs generados por el seed, normalmente `1`, para facilitar pruebas rápidas.
 
 Si cambias endpoints, DTOs o ejemplos, actualiza también esta colección.
 
@@ -1500,6 +1635,7 @@ Revisar:
 
 ```text
 seed/ApplicationSeed.java
+seed/StressSeed.java
 src/main/resources/seed/
 postman/DentalPlus_Postman.json
 ```
@@ -1510,7 +1646,8 @@ Si cambia el seed:
 - actualizar IDs esperados;
 - actualizar ejemplos Postman;
 - actualizar README;
-- revisar limpieza de Cloudinary/Supabase.
+- revisar limpieza de Cloudinary/Supabase;
+- revisar métricas de rendimiento y estrés.
 
 ---
 
@@ -1529,7 +1666,7 @@ Causas probables:
 Solución:
 
 1. Rehacer login.
-2. Copiar token completo.
+2. Copiar token completo o dejar que Postman lo guarde automáticamente.
 3. Enviar:
 
 ```http
@@ -1584,6 +1721,27 @@ Luego vuelve a ejecutar el seed completo.
 
 > Antes de borrar columnas, confirma que estás trabajando en una base de desarrollo o demo y no en producción.
 
+### Error del seed: `Seed dental surface not found`
+
+Ejemplo:
+
+```text
+Seed dental surface not found: 12 PALATAL
+```
+
+Causa:
+
+- Se intentó crear una marca dental sobre una superficie que no existe para esa pieza.
+- En el modelo actual las superficies válidas son `MESIAL`, `DISTAL`, `VESTIBULAR`, `LINGUAL` y `OCCLUSAL`.
+- Para piezas anteriores no se debe usar `OCCLUSAL`.
+- `PALATAL` no está contemplado en el modelo actual; se usa `LINGUAL`.
+
+Solución:
+
+- Cambiar `PALATAL` por `LINGUAL`.
+- Verificar que la pieza tenga esa superficie.
+- Volver a ejecutar el seed completo.
+
 ### Error de JSON mal construido
 
 Causas probables:
@@ -1596,9 +1754,9 @@ Causas probables:
 Formatos usados:
 
 ```text
-LocalDate: 2026-05-01
+LocalDate: 2026-06-01
 LocalTime: 10:00
-LocalDateTime: 2026-05-01T10:00:00
+LocalDateTime: 2026-06-01T10:00:00
 ```
 
 ### Error multipart en perfil
@@ -1644,6 +1802,9 @@ Causas probables:
 - Bucket inexistente.
 - Permisos insuficientes.
 - Archivo no PDF.
+- Fallo puntual de red o almacenamiento externo durante cargas masivas.
+
+En la prueba de estrés se registró una incidencia menor: 2067 PDFs subidos de 2068 esperados. El proceso continuó correctamente y no afectó al resto del seed.
 
 ### Error de base de datos
 
@@ -1658,6 +1819,24 @@ Causas probables:
 ### Seed borra datos inesperados
 
 El seed usa la misma configuración que la app normal. Si apunta a una DB externa real, puede borrar datos. Revisa variables antes de ejecutarlo.
+
+### La prueba de estrés tarda demasiado
+
+Causas probables:
+
+- Base de datos remota lenta.
+- `spring.jpa.show-sql=true`.
+- Subida masiva de imágenes a Cloudinary.
+- Subida masiva de PDFs a Supabase.
+- Muchos odontogramas, piezas y superficies creados individualmente.
+- Pool de conexiones demasiado pequeño.
+
+Recomendaciones:
+
+- Mantener `spring.jpa.show-sql=false`.
+- Ejecutar contra base de datos de desarrollo.
+- No cortar el proceso si ya está subiendo archivos y no hay error.
+- Revisar los tiempos `[PERF]` que imprime el seed para identificar el cuello de botella.
 
 ---
 
@@ -1801,6 +1980,7 @@ erDiagram
         Long id
         Date registrationDate
         Boolean active
+        String medicalAlert
         String notes
     }
 
@@ -1808,6 +1988,7 @@ erDiagram
         Long id
         LocalDateTime startDateTime
         LocalDateTime endDateTime
+        String treatment
         String status
         Boolean active
         String notes
@@ -1949,16 +2130,23 @@ flowchart TD
     A[Ejecutar ApplicationSeed] --> B[Mostrar advertencia]
     B --> C{Usuario escribe SEED?}
     C -- No --> X[Cancelar]
-    C -- Sí --> D[Limpiar archivos externos registrados]
-    D --> E[Truncar tablas]
-    E --> F[Crear organización y clínica]
-    F --> G[Crear boxes, staff y pacientes]
-    G --> H[Crear odontogramas, piezas, marcas y puentes]
-    H --> I[Crear citas y documentos demo]
-    I --> J[Ejecutar diagnósticos]
-    J --> K{Mantener datos?}
-    K -- Sí --> L[Datos disponibles para Postman]
-    K -- No --> M[Limpiar entorno otra vez]
+    C -- Sí --> D[Elegir modo DEMO / PERFORMANCE_LIGHT / STRESS]
+    D --> E[Limpiar archivos externos registrados]
+    E --> F[Truncar tablas]
+    F --> G[Crear organización y clínica]
+    G --> H[Crear boxes, staff y pacientes base]
+    H --> I[Crear odontogramas, piezas, marcas y puentes]
+    I --> J{Modo PERFORMANCE o STRESS?}
+    J -- Sí --> K[Crear datos de rendimiento]
+    J -- No --> M[Subir archivos externos]
+    K --> L{Modo STRESS?}
+    L -- Sí --> N[Crear pacientes, odontogramas y citas masivas]
+    L -- No --> M
+    N --> M[Subir imágenes y PDFs]
+    M --> O[Ejecutar diagnósticos]
+    O --> P{Mantener datos?}
+    P -- Sí --> Q[Datos disponibles para Postman]
+    P -- No --> R[Limpiar entorno otra vez]
 ```
 
 ### Flujo de despliegue local/Render
@@ -1994,19 +2182,17 @@ Antes de dar un cambio por terminado:
 - [ ] Si cambió seguridad/JWT, se revisaron `SecurityConfig`, `JwtService`, Postman y frontend.
 - [ ] Si cambió odontograma, se revisaron piezas, superficies, marcas, puentes, seed y ejemplos.
 - [ ] Si cambió subida de archivos, se revisaron Cloudinary/Supabase, multipart y permisos.
-- [ ] Si cambió seed, se revisaron usuarios demo, IDs por defecto y Postman.
+- [ ] Si cambió seed, se revisaron usuarios demo, IDs por defecto, Postman y resultados esperados.
 - [ ] Si cambió despliegue, se revisaron `Dockerfile`, variables de entorno y URL base.
 
 ---
 
 ## Notas pendientes de confirmar
 
-Estas partes no se pueden saber con total seguridad solo mirando el código:
+Estas partes no se pueden saber con total seguridad solo mirando el código o la ejecución local:
 
 - Configuración exacta de Render en el panel.
 - Si la base de datos externa configurada es de desarrollo, demo o producción.
 - Política final de permisos por rol aprobada por negocio.
 - Si `ROLE_PATIENT` será usado para login real de pacientes.
 - Si Supabase debe usar bucket público o privado.
-- Comando oficial recomendado para ejecutar `ApplicationSeed` fuera del IDE.
-- Estado exacto del frontend y sus dependencias con estos DTOs.
