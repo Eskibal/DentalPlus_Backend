@@ -29,8 +29,9 @@ public class Dentist {
 	@JoinColumn(name = "calendar_rule_id", unique = true)
 	private CalendarRule calendarRule;
 
-	@Column(length = 120)
-	private String speciality;
+	@ManyToOne
+	@JoinColumn(name = "speciality_id")
+	private Speciality speciality;
 
 	@Column(nullable = false)
 	private Boolean active;
@@ -41,13 +42,13 @@ public class Dentist {
 	public Dentist() {
 	}
 
-	public Dentist(Person person, User user, Clinic clinic, CalendarRule calendarRule, String speciality,
+	public Dentist(Person person, User user, Clinic clinic, CalendarRule calendarRule, Speciality speciality,
 			Boolean active, String notes) {
 		this.person = person;
 		this.user = user;
 		this.clinic = clinic;
 		this.calendarRule = calendarRule;
-		this.speciality = normalizeText(speciality);
+		this.speciality = speciality;
 		this.active = active != null ? active : true;
 		this.notes = normalizeText(notes);
 	}
@@ -88,12 +89,16 @@ public class Dentist {
 		this.calendarRule = calendarRule;
 	}
 
-	public String getSpeciality() {
+	public Speciality getSpeciality() {
 		return speciality;
 	}
 
-	public void setSpeciality(String speciality) {
-		this.speciality = normalizeText(speciality);
+	public void setSpeciality(Speciality speciality) {
+		this.speciality = speciality;
+	}
+
+	public String getSpecialityName() {
+		return speciality == null ? null : speciality.getName();
 	}
 
 	public Boolean getActive() {
@@ -112,8 +117,8 @@ public class Dentist {
 		this.notes = normalizeText(notes);
 	}
 
-	public static boolean isSpecialityValid(String speciality) {
-		return speciality == null || speciality.isBlank() || speciality.trim().length() <= 120;
+	public static boolean isSpecialityValid(Speciality speciality) {
+		return speciality != null;
 	}
 
 	public static boolean isNotesValid(String notes) {
@@ -121,6 +126,10 @@ public class Dentist {
 	}
 
 	public static String normalizeText(String text) {
-		return text == null ? null : text.trim();
+		if (text == null || text.isBlank()) {
+			return null;
+		}
+
+		return text.trim();
 	}
 }

@@ -20,6 +20,8 @@ public interface DentistDao {
 
 	List<Dentist> findActiveByClinicId(Long clinicId);
 
+	List<Dentist> findActiveByClinicIdAndTreatmentId(Long clinicId, Long treatmentId);
+
 	void save(Dentist dentist);
 
 	Dentist update(Dentist dentist);

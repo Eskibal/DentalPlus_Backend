@@ -16,6 +16,7 @@ import com.example.DentalPlus_Backend.model.Odontogram;
 import com.example.DentalPlus_Backend.model.Patient;
 import com.example.DentalPlus_Backend.model.Person;
 import com.example.DentalPlus_Backend.model.Product;
+import com.example.DentalPlus_Backend.model.Treatment;
 import com.example.DentalPlus_Backend.model.User;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -169,7 +170,7 @@ public class ApplicationTest {
 
 	@Test
 	@Order(5)
-	@DisplayName("Appointment validations work correctly")
+	@DisplayName("Appointment and treatment validations work correctly")
 	void appointmentValidationsWorkCorrectly() {
 		LocalDateTime validStart = LocalDateTime.of(2026, 5, 1, 10, 0);
 		LocalDateTime validEnd = LocalDateTime.of(2026, 5, 1, 10, 30);
@@ -184,14 +185,25 @@ public class ApplicationTest {
 				() -> assertTrue(Appointment.isStatusValid("COMPLETED")),
 				() -> assertTrue(Appointment.isStatusValid("CANCELLED")),
 				() -> assertFalse(Appointment.isStatusValid("UNKNOWN")),
-				() -> assertTrue(Appointment.isTreatmentValid(null)),
-				() -> assertTrue(Appointment.isTreatmentValid("")),
-				() -> assertTrue(Appointment.isTreatmentValid("Dental cleaning")),
-				() -> assertTrue(Appointment.isTreatmentValid("   Dental cleaning   ")),
-				() -> assertFalse(Appointment.isTreatmentValid("a".repeat(121))),
+
+				() -> assertTrue(Treatment.isNameValid("Dental cleaning")),
+				() -> assertTrue(Treatment.isNameValid("   Dental cleaning   ")),
+				() -> assertFalse(Treatment.isNameValid(null)),
+				() -> assertFalse(Treatment.isNameValid("")),
+				() -> assertFalse(Treatment.isNameValid("a".repeat(121))),
+				() -> assertTrue(Treatment.isEstimatedDurationMinutesValid(null)),
+				() -> assertTrue(Treatment.isEstimatedDurationMinutesValid(30)),
+				() -> assertFalse(Treatment.isEstimatedDurationMinutesValid(-1)),
+				() -> assertTrue(Treatment.isBeforeMarginMinutesValid(null)),
+				() -> assertTrue(Treatment.isBeforeMarginMinutesValid(0)),
+				() -> assertFalse(Treatment.isBeforeMarginMinutesValid(-1)),
+				() -> assertTrue(Treatment.isAfterMarginMinutesValid(null)),
+				() -> assertTrue(Treatment.isAfterMarginMinutesValid(5)),
+				() -> assertFalse(Treatment.isAfterMarginMinutesValid(-1)),
+
 				() -> assertTrue(Appointment.isNotesValid("Routine appointment diagnostics")));
 
-		printOk("Appointment validations passed.");
+		printOk("Appointment and treatment validations passed.");
 	}
 
 	@Test

@@ -210,7 +210,7 @@ public class UserService {
 			roles.add(new RoleDto("DENTIST", dentist.getId(),
 					dentist.getClinic() == null ? null : dentist.getClinic().getId(),
 					dentist.getClinic() == null ? null : dentist.getClinic().getName(), dentist.getActive(),
-					dentist.getSpeciality()));
+					dentist.getSpecialityName()));
 		}
 
 		Receptionist receptionist = receptionistDao.findByUserId(userId);

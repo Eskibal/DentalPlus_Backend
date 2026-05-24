@@ -8,6 +8,8 @@ public class AppointmentDto {
 	private Long id;
 	private Long boxId;
 	private String boxName;
+	private Long treatmentId;
+	private String treatmentName;
 	private Long dentistId;
 	private String dentistName;
 	private Long patientId;
@@ -16,7 +18,6 @@ public class AppointmentDto {
 	private LocalDateTime startDateTime;
 	private LocalDateTime endDateTime;
 	private String status;
-	private String treatment;
 	private String notes;
 	private Boolean active;
 
@@ -25,23 +26,29 @@ public class AppointmentDto {
 
 	public AppointmentDto(Appointment appointment) {
 		this.id = appointment.getId();
+
 		this.boxId = appointment.getBox() == null ? null : appointment.getBox().getId();
 		this.boxName = appointment.getBox() == null ? null : appointment.getBox().getName();
+
+		this.treatmentId = appointment.getTreatment() == null ? null : appointment.getTreatment().getId();
+		this.treatmentName = appointment.getTreatment() == null ? null : appointment.getTreatment().getName();
+
 		this.dentistId = appointment.getDentist() == null ? null : appointment.getDentist().getId();
 		this.dentistName = appointment.getDentist() == null || appointment.getDentist().getPerson() == null ? null
 				: buildPersonFullName(appointment.getDentist().getPerson().getName(),
 						appointment.getDentist().getPerson().getFirstSurname(),
 						appointment.getDentist().getPerson().getSecondSurname());
+
 		this.patientId = appointment.getPatient() == null ? null : appointment.getPatient().getId();
 		this.patientName = appointment.getPatient() == null || appointment.getPatient().getPerson() == null ? null
 				: buildPersonFullName(appointment.getPatient().getPerson().getName(),
 						appointment.getPatient().getPerson().getFirstSurname(),
 						appointment.getPatient().getPerson().getSecondSurname());
+
 		this.patientMedicalAlert = appointment.getPatient() == null ? null : appointment.getPatient().getMedicalAlert();
 		this.startDateTime = appointment.getStartDateTime();
 		this.endDateTime = appointment.getEndDateTime();
 		this.status = appointment.getStatus();
-		this.treatment = appointment.getTreatment();
 		this.notes = appointment.getNotes();
 		this.active = appointment.getActive();
 	}
@@ -82,6 +89,14 @@ public class AppointmentDto {
 		return boxName;
 	}
 
+	public Long getTreatmentId() {
+		return treatmentId;
+	}
+
+	public String getTreatmentName() {
+		return treatmentName;
+	}
+
 	public Long getDentistId() {
 		return dentistId;
 	}
@@ -97,7 +112,7 @@ public class AppointmentDto {
 	public String getPatientName() {
 		return patientName;
 	}
-	
+
 	public String getPatientMedicalAlert() {
 		return patientMedicalAlert;
 	}
@@ -112,10 +127,6 @@ public class AppointmentDto {
 
 	public String getStatus() {
 		return status;
-	}
-	
-	public String getTreatment() {
-		return treatment;
 	}
 
 	public String getNotes() {
@@ -138,6 +149,14 @@ public class AppointmentDto {
 		this.boxName = boxName;
 	}
 
+	public void setTreatmentId(Long treatmentId) {
+		this.treatmentId = treatmentId;
+	}
+
+	public void setTreatmentName(String treatmentName) {
+		this.treatmentName = treatmentName;
+	}
+
 	public void setDentistId(Long dentistId) {
 		this.dentistId = dentistId;
 	}
@@ -153,7 +172,7 @@ public class AppointmentDto {
 	public void setPatientName(String patientName) {
 		this.patientName = patientName;
 	}
-	
+
 	public void setPatientMedicalAlert(String patientMedicalAlert) {
 		this.patientMedicalAlert = patientMedicalAlert;
 	}
@@ -168,10 +187,6 @@ public class AppointmentDto {
 
 	public void setStatus(String status) {
 		this.status = status;
-	}
-	
-	public void setTreatment(String treatment) {
-		this.treatment = treatment;
 	}
 
 	public void setNotes(String notes) {

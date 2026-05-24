@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@JsonPropertyOrder({ "id", "box", "dentist", "patient", "startDateTime", "endDateTime", "status", "treatment",
-	"notes", "active" })
+@JsonPropertyOrder({ "id", "box", "treatment", "dentist", "patient", "startDateTime", "endDateTime", "status",
+		"notes", "active" })
 @Entity
 @Table(name = "appointment")
 public class Appointment {
@@ -18,6 +18,10 @@ public class Appointment {
 	@ManyToOne(optional = false)
 	@JoinColumn(name = "box_id", nullable = false)
 	private Box box;
+
+	@ManyToOne
+	@JoinColumn(name = "treatment_id")
+	private Treatment treatment;
 
 	@ManyToOne(optional = false)
 	@JoinColumn(name = "dentist_id", nullable = false)
@@ -36,9 +40,6 @@ public class Appointment {
 	@Column(nullable = false, length = 20)
 	private String status;
 
-	@Column(length = 120)
-	private String treatment;
-
 	@Column(length = 500)
 	private String notes;
 
@@ -48,15 +49,15 @@ public class Appointment {
 	public Appointment() {
 	}
 
-	public Appointment(Box box, Dentist dentist, Patient patient, LocalDateTime startDateTime,
-			LocalDateTime endDateTime, String status, String treatment, String notes, Boolean active) {
+	public Appointment(Box box, Treatment treatment, Dentist dentist, Patient patient, LocalDateTime startDateTime,
+			LocalDateTime endDateTime, String status, String notes, Boolean active) {
 		this.box = box;
+		this.treatment = treatment;
 		this.dentist = dentist;
 		this.patient = patient;
 		this.startDateTime = startDateTime;
 		this.endDateTime = endDateTime;
 		this.status = normalizeStatus(status);
-		this.treatment = normalizeText(treatment);
 		this.notes = normalizeText(notes);
 		this.active = active != null ? active : true;
 	}
@@ -71,6 +72,22 @@ public class Appointment {
 
 	public void setBox(Box box) {
 		this.box = box;
+	}
+
+	public Treatment getTreatment() {
+		return treatment;
+	}
+
+	public void setTreatment(Treatment treatment) {
+		this.treatment = treatment;
+	}
+
+	public Long getTreatmentId() {
+		return treatment == null ? null : treatment.getId();
+	}
+
+	public String getTreatmentName() {
+		return treatment == null ? null : treatment.getName();
 	}
 
 	public Dentist getDentist() {
@@ -112,14 +129,6 @@ public class Appointment {
 	public void setStatus(String status) {
 		this.status = normalizeStatus(status);
 	}
-	
-	public String getTreatment() {
-		return treatment;
-	}
-
-	public void setTreatment(String treatment) {
-		this.treatment = normalizeText(treatment);
-	}
 
 	public String getNotes() {
 		return notes;
@@ -157,10 +166,6 @@ public class Appointment {
 		String normalized = status.trim().toUpperCase();
 
 		return normalized.equals("SCHEDULED") || normalized.equals("COMPLETED") || normalized.equals("CANCELLED");
-	}
-	
-	public static boolean isTreatmentValid(String treatment) {
-		return treatment == null || treatment.isBlank() || treatment.trim().length() <= 120;
 	}
 
 	public static boolean isNotesValid(String notes) {

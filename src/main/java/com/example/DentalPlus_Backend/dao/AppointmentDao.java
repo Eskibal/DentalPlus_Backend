@@ -15,6 +15,9 @@ public interface AppointmentDao {
 
 	List<Appointment> findActiveByDentistIdAndClinicId(Long dentistId, Long clinicId);
 
+	List<Appointment> findActiveByPatientIdAndDateRange(Long patientId, LocalDateTime startDateTime,
+			LocalDateTime endDateTime);
+
 	List<Appointment> findOverlappingAppointments(Long clinicId, LocalDateTime startDateTime,
 			LocalDateTime endDateTime);
 

@@ -4,11 +4,15 @@ import com.example.DentalPlus_Backend.dao.AppointmentDao;
 import com.example.DentalPlus_Backend.model.Appointment;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -20,6 +24,10 @@ public class AppointmentDaoImplHibernate implements AppointmentDao {
 
 	@Override
 	public Appointment findById(Long id) {
+		if (id == null) {
+			return null;
+		}
+
 		return entityManager.find(Appointment.class, id);
 	}
 
@@ -32,90 +40,135 @@ public class AppointmentDaoImplHibernate implements AppointmentDao {
 	@Override
 	public List<Appointment> findByClinicIdAndDateRangeWithFilters(Long clinicId, LocalDateTime startDateTime,
 			LocalDateTime endDateTime, Long patientId, Long dentistId, Long boxId) {
-		StringBuilder jpql = new StringBuilder("""
-				FROM Appointment a
-				WHERE a.dentist.clinic.id = :clinicId
-				  AND a.startDateTime >= :startDateTime
-				  AND a.startDateTime < :endDateTime
-				""");
+		if (clinicId == null || startDateTime == null || endDateTime == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Appointment> cq = cb.createQuery(Appointment.class);
+		Root<Appointment> appointment = cq.from(Appointment.class);
+
+		List<Predicate> predicates = new ArrayList<>();
+
+		predicates.add(cb.equal(appointment.get("dentist").get("clinic").get("id"), clinicId));
+		predicates.add(cb.greaterThanOrEqualTo(appointment.get("startDateTime"), startDateTime));
+		predicates.add(cb.lessThan(appointment.get("startDateTime"), endDateTime));
 
 		if (patientId != null) {
-			jpql.append(" AND a.patient.id = :patientId");
+			predicates.add(cb.equal(appointment.get("patient").get("id"), patientId));
 		}
 
 		if (dentistId != null) {
-			jpql.append(" AND a.dentist.id = :dentistId");
+			predicates.add(cb.equal(appointment.get("dentist").get("id"), dentistId));
 		}
 
 		if (boxId != null) {
-			jpql.append(" AND a.box.id = :boxId");
+			predicates.add(cb.equal(appointment.get("box").get("id"), boxId));
 		}
 
-		jpql.append(" ORDER BY a.startDateTime ASC");
+		cq.select(appointment)
+				.where(cb.and(predicates.toArray(new Predicate[0])))
+				.orderBy(cb.asc(appointment.get("startDateTime")));
 
-		TypedQuery<Appointment> query = entityManager.createQuery(jpql.toString(), Appointment.class);
-
-		query.setParameter("clinicId", clinicId);
-		query.setParameter("startDateTime", startDateTime);
-		query.setParameter("endDateTime", endDateTime);
-
-		if (patientId != null) {
-			query.setParameter("patientId", patientId);
-		}
-
-		if (dentistId != null) {
-			query.setParameter("dentistId", dentistId);
-		}
-
-		if (boxId != null) {
-			query.setParameter("boxId", boxId);
-		}
-
-		return query.getResultList();
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Appointment> findActiveByDentistIdAndClinicId(Long dentistId, Long clinicId) {
-		return entityManager.createQuery("""
-				FROM Appointment a
-				WHERE a.dentist.id = :dentistId
-				  AND a.dentist.clinic.id = :clinicId
-				  AND a.active = true
-				  AND a.status <> 'CANCELLED'
-				ORDER BY a.startDateTime ASC
-				""", Appointment.class).setParameter("dentistId", dentistId).setParameter("clinicId", clinicId)
-				.getResultList();
+		if (dentistId == null || clinicId == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Appointment> cq = cb.createQuery(Appointment.class);
+		Root<Appointment> appointment = cq.from(Appointment.class);
+
+		cq.select(appointment)
+				.where(cb.and(
+						cb.equal(appointment.get("dentist").get("id"), dentistId),
+						cb.equal(appointment.get("dentist").get("clinic").get("id"), clinicId),
+						cb.isTrue(appointment.get("active")),
+						cb.notEqual(appointment.get("status"), "CANCELLED")
+				))
+				.orderBy(cb.asc(appointment.get("startDateTime")));
+
+		return entityManager.createQuery(cq).getResultList();
+	}
+
+	@Override
+	public List<Appointment> findActiveByPatientIdAndDateRange(Long patientId, LocalDateTime startDateTime,
+			LocalDateTime endDateTime) {
+		if (patientId == null || startDateTime == null || endDateTime == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Appointment> cq = cb.createQuery(Appointment.class);
+		Root<Appointment> appointment = cq.from(Appointment.class);
+
+		cq.select(appointment)
+				.where(cb.and(
+						cb.equal(appointment.get("patient").get("id"), patientId),
+						cb.isTrue(appointment.get("active")),
+						cb.notEqual(appointment.get("status"), "CANCELLED"),
+						cb.greaterThanOrEqualTo(appointment.get("startDateTime"), startDateTime),
+						cb.lessThan(appointment.get("startDateTime"), endDateTime)
+				))
+				.orderBy(cb.asc(appointment.get("startDateTime")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public List<Appointment> findOverlappingAppointments(Long clinicId, LocalDateTime startDateTime,
 			LocalDateTime endDateTime) {
-		return entityManager.createQuery("""
-				FROM Appointment a
-				WHERE a.dentist.clinic.id = :clinicId
-				  AND a.active = true
-				  AND a.status <> 'CANCELLED'
-				  AND a.startDateTime < :endDateTime
-				  AND a.endDateTime > :startDateTime
-				""", Appointment.class).setParameter("clinicId", clinicId).setParameter("startDateTime", startDateTime)
-				.setParameter("endDateTime", endDateTime).getResultList();
+		if (clinicId == null || startDateTime == null || endDateTime == null) {
+			return List.of();
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Appointment> cq = cb.createQuery(Appointment.class);
+		Root<Appointment> appointment = cq.from(Appointment.class);
+
+		cq.select(appointment)
+				.where(cb.and(
+						cb.equal(appointment.get("dentist").get("clinic").get("id"), clinicId),
+						cb.isTrue(appointment.get("active")),
+						cb.notEqual(appointment.get("status"), "CANCELLED"),
+						cb.lessThan(appointment.get("startDateTime"), endDateTime),
+						cb.greaterThan(appointment.get("endDateTime"), startDateTime)
+				))
+				.orderBy(cb.asc(appointment.get("startDateTime")));
+
+		return entityManager.createQuery(cq).getResultList();
 	}
 
 	@Override
 	public boolean existsOverlappingDentistAppointment(Long dentistId, LocalDateTime startDateTime,
 			LocalDateTime endDateTime, Long excludedAppointmentId) {
-		Long count = entityManager.createQuery("""
-				SELECT COUNT(a)
-				FROM Appointment a
-				WHERE a.dentist.id = :dentistId
-				  AND a.active = true
-				  AND a.status <> 'CANCELLED'
-				  AND a.startDateTime < :endDateTime
-				  AND a.endDateTime > :startDateTime
-				  AND (:excludedAppointmentId IS NULL OR a.id <> :excludedAppointmentId)
-				""", Long.class).setParameter("dentistId", dentistId).setParameter("startDateTime", startDateTime)
-				.setParameter("endDateTime", endDateTime).setParameter("excludedAppointmentId", excludedAppointmentId)
-				.getSingleResult();
+		if (dentistId == null || startDateTime == null || endDateTime == null) {
+			return false;
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+		Root<Appointment> appointment = cq.from(Appointment.class);
+
+		List<Predicate> predicates = new ArrayList<>();
+
+		predicates.add(cb.equal(appointment.get("dentist").get("id"), dentistId));
+		predicates.add(cb.isTrue(appointment.get("active")));
+		predicates.add(cb.notEqual(appointment.get("status"), "CANCELLED"));
+		predicates.add(cb.lessThan(appointment.get("startDateTime"), endDateTime));
+		predicates.add(cb.greaterThan(appointment.get("endDateTime"), startDateTime));
+
+		if (excludedAppointmentId != null) {
+			predicates.add(cb.notEqual(appointment.get("id"), excludedAppointmentId));
+		}
+
+		cq.select(cb.count(appointment)).where(cb.and(predicates.toArray(new Predicate[0])));
+
+		Long count = entityManager.createQuery(cq).getSingleResult();
 
 		return count != null && count > 0;
 	}
@@ -123,18 +176,29 @@ public class AppointmentDaoImplHibernate implements AppointmentDao {
 	@Override
 	public boolean existsOverlappingBoxAppointment(Long boxId, LocalDateTime startDateTime, LocalDateTime endDateTime,
 			Long excludedAppointmentId) {
-		Long count = entityManager.createQuery("""
-				SELECT COUNT(a)
-				FROM Appointment a
-				WHERE a.box.id = :boxId
-				  AND a.active = true
-				  AND a.status <> 'CANCELLED'
-				  AND a.startDateTime < :endDateTime
-				  AND a.endDateTime > :startDateTime
-				  AND (:excludedAppointmentId IS NULL OR a.id <> :excludedAppointmentId)
-				""", Long.class).setParameter("boxId", boxId).setParameter("startDateTime", startDateTime)
-				.setParameter("endDateTime", endDateTime).setParameter("excludedAppointmentId", excludedAppointmentId)
-				.getSingleResult();
+		if (boxId == null || startDateTime == null || endDateTime == null) {
+			return false;
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+		Root<Appointment> appointment = cq.from(Appointment.class);
+
+		List<Predicate> predicates = new ArrayList<>();
+
+		predicates.add(cb.equal(appointment.get("box").get("id"), boxId));
+		predicates.add(cb.isTrue(appointment.get("active")));
+		predicates.add(cb.notEqual(appointment.get("status"), "CANCELLED"));
+		predicates.add(cb.lessThan(appointment.get("startDateTime"), endDateTime));
+		predicates.add(cb.greaterThan(appointment.get("endDateTime"), startDateTime));
+
+		if (excludedAppointmentId != null) {
+			predicates.add(cb.notEqual(appointment.get("id"), excludedAppointmentId));
+		}
+
+		cq.select(cb.count(appointment)).where(cb.and(predicates.toArray(new Predicate[0])));
+
+		Long count = entityManager.createQuery(cq).getSingleResult();
 
 		return count != null && count > 0;
 	}
@@ -142,18 +206,29 @@ public class AppointmentDaoImplHibernate implements AppointmentDao {
 	@Override
 	public boolean existsOverlappingPatientAppointment(Long patientId, LocalDateTime startDateTime,
 			LocalDateTime endDateTime, Long excludedAppointmentId) {
-		Long count = entityManager.createQuery("""
-				SELECT COUNT(a)
-				FROM Appointment a
-				WHERE a.patient.id = :patientId
-				  AND a.active = true
-				  AND a.status <> 'CANCELLED'
-				  AND a.startDateTime < :endDateTime
-				  AND a.endDateTime > :startDateTime
-				  AND (:excludedAppointmentId IS NULL OR a.id <> :excludedAppointmentId)
-				""", Long.class).setParameter("patientId", patientId).setParameter("startDateTime", startDateTime)
-				.setParameter("endDateTime", endDateTime).setParameter("excludedAppointmentId", excludedAppointmentId)
-				.getSingleResult();
+		if (patientId == null || startDateTime == null || endDateTime == null) {
+			return false;
+		}
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+		Root<Appointment> appointment = cq.from(Appointment.class);
+
+		List<Predicate> predicates = new ArrayList<>();
+
+		predicates.add(cb.equal(appointment.get("patient").get("id"), patientId));
+		predicates.add(cb.isTrue(appointment.get("active")));
+		predicates.add(cb.notEqual(appointment.get("status"), "CANCELLED"));
+		predicates.add(cb.lessThan(appointment.get("startDateTime"), endDateTime));
+		predicates.add(cb.greaterThan(appointment.get("endDateTime"), startDateTime));
+
+		if (excludedAppointmentId != null) {
+			predicates.add(cb.notEqual(appointment.get("id"), excludedAppointmentId));
+		}
+
+		cq.select(cb.count(appointment)).where(cb.and(predicates.toArray(new Predicate[0])));
+
+		Long count = entityManager.createQuery(cq).getSingleResult();
 
 		return count != null && count > 0;
 	}

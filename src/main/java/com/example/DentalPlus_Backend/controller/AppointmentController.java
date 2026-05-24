@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 
 @RestController
 @RequestMapping("/appointment")
@@ -28,7 +27,8 @@ public class AppointmentController {
 	public ResponseEntity<?> getAppointments(
 			@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-			@RequestParam(required = false) Long patientId, @RequestParam(required = false) Long dentistId,
+			@RequestParam(required = false) Long patientId,
+			@RequestParam(required = false) Long dentistId,
 			@RequestParam(required = false) Long boxId) {
 		Long callerUserId = getAuthenticatedUserId(authorizationHeader);
 
@@ -81,7 +81,8 @@ public class AppointmentController {
 
 	@PutMapping("/{id}")
 	public ResponseEntity<?> updateAppointment(
-			@RequestHeader(value = "Authorization", required = false) String authorizationHeader, @PathVariable Long id,
+			@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+			@PathVariable Long id,
 			@RequestBody AppointmentDto request) {
 		Long callerUserId = getAuthenticatedUserId(authorizationHeader);
 
@@ -114,11 +115,10 @@ public class AppointmentController {
 		}
 	}
 
-	@GetMapping("/availability")
+	@PostMapping("/availability")
 	public ResponseEntity<?> getAvailability(
 			@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time) {
+			@RequestBody AvailabilityDto request) {
 		Long callerUserId = getAuthenticatedUserId(authorizationHeader);
 
 		if (callerUserId == null) {
@@ -126,7 +126,7 @@ public class AppointmentController {
 		}
 
 		try {
-			AvailabilityDto response = appointmentService.getAvailability(callerUserId, date, time);
+			AvailabilityDto response = appointmentService.getAvailability(callerUserId, request);
 			return ResponseEntity.ok(response);
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(e.getMessage());

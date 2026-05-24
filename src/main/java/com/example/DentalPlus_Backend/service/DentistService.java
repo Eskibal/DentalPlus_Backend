@@ -4,11 +4,13 @@ import com.example.DentalPlus_Backend.dao.CalendarRuleDao;
 import com.example.DentalPlus_Backend.dao.ClinicDao;
 import com.example.DentalPlus_Backend.dao.DentistDao;
 import com.example.DentalPlus_Backend.dao.PersonDao;
+import com.example.DentalPlus_Backend.dao.SpecialityDao;
 import com.example.DentalPlus_Backend.dao.UserDao;
 import com.example.DentalPlus_Backend.model.CalendarRule;
 import com.example.DentalPlus_Backend.model.Clinic;
 import com.example.DentalPlus_Backend.model.Dentist;
 import com.example.DentalPlus_Backend.model.Person;
+import com.example.DentalPlus_Backend.model.Speciality;
 import com.example.DentalPlus_Backend.model.User;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -23,14 +25,16 @@ public class DentistService {
 	private final PersonDao personDao;
 	private final ClinicDao clinicDao;
 	private final CalendarRuleDao calendarRuleDao;
+	private final SpecialityDao specialityDao;
 
 	public DentistService(DentistDao dentistDao, UserDao userDao, PersonDao personDao, ClinicDao clinicDao,
-			CalendarRuleDao calendarRuleDao) {
+			CalendarRuleDao calendarRuleDao, SpecialityDao specialityDao) {
 		this.dentistDao = dentistDao;
 		this.userDao = userDao;
 		this.personDao = personDao;
 		this.clinicDao = clinicDao;
 		this.calendarRuleDao = calendarRuleDao;
+		this.specialityDao = specialityDao;
 	}
 
 	public Dentist findById(Long dentistId) {
@@ -115,7 +119,9 @@ public class DentistService {
 			}
 		}
 
-		if (!Dentist.isSpecialityValid(speciality)) {
+		Speciality specialityEntity = findSpecialityByNameOrThrow(speciality);
+
+		if (!Dentist.isSpecialityValid(specialityEntity)) {
 			throw new IllegalArgumentException("Invalid speciality");
 		}
 
@@ -133,7 +139,7 @@ public class DentistService {
 			throw new IllegalArgumentException("This person is already linked to a dentist role");
 		}
 
-		Dentist dentist = new Dentist(person, user, clinic, calendarRule, speciality, active, notes);
+		Dentist dentist = new Dentist(person, user, clinic, calendarRule, specialityEntity, active, notes);
 
 		dentistDao.save(dentist);
 
@@ -162,10 +168,13 @@ public class DentistService {
 		}
 
 		if (speciality != null) {
-			if (!Dentist.isSpecialityValid(speciality)) {
+			Speciality specialityEntity = findSpecialityByNameOrThrow(speciality);
+
+			if (!Dentist.isSpecialityValid(specialityEntity)) {
 				throw new IllegalArgumentException("Invalid speciality");
 			}
-			dentist.setSpeciality(speciality);
+
+			dentist.setSpeciality(specialityEntity);
 		}
 
 		if (active != null) {
@@ -196,5 +205,19 @@ public class DentistService {
 		dentist.setActive(false);
 
 		return dentistDao.update(dentist);
+	}
+
+	private Speciality findSpecialityByNameOrThrow(String specialityName) {
+		if (specialityName == null || specialityName.isBlank()) {
+			throw new IllegalArgumentException("speciality is required");
+		}
+
+		Speciality speciality = specialityDao.findByName(specialityName);
+
+		if (speciality == null || !Boolean.TRUE.equals(speciality.getActive())) {
+			throw new IllegalArgumentException("Speciality not found");
+		}
+
+		return speciality;
 	}
 }
